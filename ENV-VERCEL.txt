@@ -1,0 +1,7 @@
+Variables d'environnement à saisir dans Vercel (Settings > Environment Variables), cible Production :
+
+  NEXT_PUBLIC_SUPABASE_URL=https://lboukjmbiszjfmkhauxp.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_Q_sMIamQfm7jrZTG6Em9pg_SAlHZJMj
+  NEXT_PUBLIC_SITE_URL=http://localhost:3000
+  NEXT_PUBLIC_SITE_URL=https://VOTRE-DOMAINE-VERCEL (à mettre à jour après le premier déploiement)
+  SUPABASE_SERVICE_ROLE_KEY=<clé service_role : Supabase > Project Settings > API ; secrète, jamais dans GitHub>
