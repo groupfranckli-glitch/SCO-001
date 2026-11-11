@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { AgeGateSlot } from "@/components/age-gate-slot";
 import { CartProvider } from "@/components/cart-provider";
 import "./globals.css";
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <AgeGateSlot />
         </Suspense>
+        <Analytics />
       </body>
     </html>
   );
