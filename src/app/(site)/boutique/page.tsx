@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { CollectionTile } from "@/components/collection-tile";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { getProducts } from "@/lib/catalog";
+import { Banners } from "@/components/banners";
 import { buildTiles } from "@/lib/collections";
+import { getSlotImages } from "@/lib/site-media";
 
 export const metadata: Metadata = {
   title: "Boutique",
@@ -19,7 +21,8 @@ const LAYOUT: Record<string, string> = {
 };
 
 async function Tiles() {
-  const tiles = buildTiles(await getProducts());
+  const [products, images] = await Promise.all([getProducts(), getSlotImages()]);
+  const tiles = buildTiles(products).map((t) => ({ ...t, image: images[`tile_${t.key}` as keyof typeof images] ?? t.image }));
   if (tiles.length === 0) {
     return <p className="mt-12 text-ink-soft">Le catalogue est en cours de préparation. Revenez très bientôt.</p>;
   }
@@ -37,6 +40,7 @@ export default function BoutiquePage() {
     <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-8 sm:pt-16">
       <p className="eyebrow">Boutique</p>
       <h1 className="display mt-3 text-5xl sm:text-6xl">Deux univers, une sélection courte</h1>
+      <Banners placement="boutique" />
       <Suspense fallback={<PageSkeleton />}>
         <Tiles />
       </Suspense>

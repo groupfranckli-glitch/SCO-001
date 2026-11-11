@@ -1,8 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 
 /** Identité SCO PUFF : un nuage de vapeur stylisé et un mot-symbole en serif italique. */
-export function Logo({ light = false, href }: { light?: boolean; href?: string }) {
-  const content = (
+export function Logo({ light = false, href, imageUrl }: { light?: boolean; href?: string; imageUrl?: string | null }) {
+  const content = imageUrl ? (
+    <Image src={imageUrl} alt="SCO PUFF" width={180} height={56} priority className="h-9 w-auto max-w-[11rem] object-contain" />
+  ) : (
     <span className={`inline-flex items-center gap-2 ${light ? "text-white" : "text-ink"}`}>
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
         <circle cx="13" cy="13" r="12" stroke="currentColor" strokeWidth="1.2" />

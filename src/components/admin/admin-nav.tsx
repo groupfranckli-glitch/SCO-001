@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/admin/livreurs", label: "Livreurs" },
   { href: "/admin/paiements", label: "Paiements" },
   { href: "/admin/catalogue", label: "Catalogue" },
+  { href: "/admin/medias", label: "Médias & bannières" },
   { href: "/admin/stock", label: "Stock" },
   { href: "/admin/clients", label: "Clients" },
   { href: "/admin/promos", label: "Codes promo" },

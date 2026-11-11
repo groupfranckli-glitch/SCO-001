@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CourierDeliver } from "@/components/courier-deliver";
-import { Logo } from "@/components/logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { formatFcfa } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +52,7 @@ async function Content() {
 export default function Page() {
   return (
     <div className="mx-auto max-w-xl px-4 py-8">
-      <Logo href="/livreur" />
+      <BrandLogo href="/livreur" />
       <Suspense fallback={<PageSkeleton />}>
         <Content />
       </Suspense>

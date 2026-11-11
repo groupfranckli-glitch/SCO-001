@@ -2,11 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/catalog";
 import { formatFcfa } from "@/lib/format";
-import { mediaFor } from "@/lib/media";
+import { resolveMedia } from "@/lib/media";
 
 export function ProductCard({ product }: { product: Product }) {
   const first = product.variants.find((v) => v.available > 0) ?? product.variants[0];
-  const media = mediaFor(product.kind, first);
+  const media = resolveMedia(product, first);
   return (
     <Link href={`/produit/${product.slug}`} data-testid="product-card" className="group block">
       <div className="relative aspect-square overflow-hidden rounded-[1.75rem]" style={{ background: media.bg }}>

@@ -14,7 +14,7 @@ async function noOverflow(page: Page) {
 async function imagesLoaded(page: Page, scope = "main") {
   await page.waitForFunction(
     (sel) => {
-      const imgs = Array.from(document.querySelectorAll<HTMLImageElement>(`${sel} img`));
+      const imgs = Array.from(document.querySelectorAll<HTMLImageElement>(`${sel} img`)).filter((i) => !i.closest("[data-testid=banners]"));
       return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0);
     },
     scope,

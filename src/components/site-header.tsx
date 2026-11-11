@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CartLink } from "@/components/cart-link";
-import { Logo } from "@/components/logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { SearchBox } from "@/components/search-box";
 
 /** `overlay` : transparent, texte clair, posé sur la photo d'entrée. */
@@ -23,7 +23,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
             Espace client
           </Link>
         </nav>
-        <div className="justify-self-center"><Logo light={overlay} href="/" /></div>
+        <div className="justify-self-center"><BrandLogo light={overlay} href="/" /></div>
         <div className={`flex items-center justify-end gap-1 ${tone}`}>
           <SearchBox light={overlay} />
           <CartLink />

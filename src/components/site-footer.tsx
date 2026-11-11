@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Logo } from "@/components/logo";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-line bg-surface">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Logo />
+          <BrandLogo />
           <p className="mt-4 max-w-sm text-sm text-ink-soft">
             Puffs et e-cigarettes, livrés à domicile à Abidjan. Une sélection courte, des produits d&apos;origine.
           </p>

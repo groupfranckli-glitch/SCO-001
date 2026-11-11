@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { confirmAge } from "@/app/actions";
 import { Logo } from "@/components/logo";
 
-export function AgeGate() {
+export function AgeGate({ logoUrl }: { logoUrl?: string | null }) {
   const [denied, setDenied] = useState(false);
   const [pending, start] = useTransition();
 
@@ -17,7 +17,7 @@ export function AgeGate() {
     >
       <div className="card w-full max-w-md px-7 py-10 text-center sm:px-10">
         <div className="flex justify-center">
-          <Logo />
+          <Logo imageUrl={logoUrl} />
         </div>
         {denied ? (
           <div role="alert" className="mt-8">

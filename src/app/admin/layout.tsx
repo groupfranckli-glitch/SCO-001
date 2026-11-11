@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { AdminNav } from "@/components/admin/admin-nav";
-import { Logo } from "@/components/logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { requireAdmin } from "@/lib/admin";
 
 export const metadata: Metadata = { title: { default: "Administration", template: "%s · Admin SCO PUFF" }, robots: { index: false, follow: false } };
@@ -13,7 +13,7 @@ async function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-svh md:grid md:grid-cols-[15rem_1fr]">
       <aside className="border-b border-line bg-surface p-4 md:min-h-svh md:border-b-0 md:border-r md:p-6">
         <div className="mb-4 md:mb-8">
-          <Logo href="/admin" />
+          <BrandLogo href="/admin" />
         </div>
         <AdminNav />
         <div className="mt-4 hidden text-xs text-ink-soft md:mt-10 md:block">

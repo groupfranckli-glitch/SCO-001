@@ -103,8 +103,13 @@ http
       const u = userFor(req.headers.authorization ?? "");
       return u ? json(200, u) : json(401, { message: "invalid" });
     }
+    if (url.pathname.startsWith("/storage/v1/object/")) {
+      let n = 0;
+      req.on("data", (c) => (n += c.length));
+      return req.on("end", () => { calls.admin.push({ fn: "storage", method: req.method, path: url.pathname, bytes: n, type: req.headers["content-type"] }); json(200, { Key: url.pathname.replace("/storage/v1/object/", "") }); });
+    }
     const table = url.pathname.replace("/rest/v1/", "");
-    if (["products", "product_variants", "promo_codes", "delivery_zones", "site_settings", "audit_log"].includes(table) && ["POST", "PATCH", "PUT"].includes(req.method)) {
+    if (["products", "product_variants", "promo_codes", "delivery_zones", "site_settings", "audit_log", "product_images", "banners"].includes(table) && ["POST", "PATCH", "PUT", "DELETE"].includes(req.method)) {
       return body((b) => { calls.admin.push({ fn: "write", table, method: req.method, query: url.search, body: b }); res.writeHead(204); res.end(); });
     }
     if (table === "products") {
@@ -115,6 +120,8 @@ http
     }
     if (table === "categories") return json(200, categories);
     if (table === "home_sections") return json(200, []);
+    if (table === "product_images") return reply([]);
+    if (table === "banners") return json(200, eq(url, "placement") === "boutique" ? [] : [{ id: "44444444-4444-4444-8444-444444444444", title: "Offre test", alt: null, href: "/boutique", image_path: "banners/x.png", placement: "home", position: 0, is_active: true, starts_at: null, ends_at: null }]);
     if (table === "delivery_zones") return json(200, zones);
     if (table === "profiles") {
       if (eq(url, "role") === "courier") return reply([{ id: "33333333-3333-4333-8333-333333333333", full_name: "Moussa Livreur", phone: "0700000000", role: "courier" }]);

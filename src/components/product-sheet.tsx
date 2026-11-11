@@ -8,7 +8,7 @@ import { useCart } from "@/components/cart-provider";
 import type { Product } from "@/lib/catalog";
 import { MAX_LINE_QTY } from "@/lib/cart";
 import { formatFcfa } from "@/lib/format";
-import { mediaFor, norm, SPECS } from "@/lib/media";
+import { norm, resolveMedia, SPECS } from "@/lib/media";
 
 const SWATCH: Record<string, string> = { noir: "#15120f", bleu: "#3b6fd0", violet: "#8c78d6", rouge: "#c8312b" };
 
@@ -37,7 +37,7 @@ export function ProductSheet({
   const [added, setAdded] = useState(false);
 
   const variant = product.variants.find((v) => v.id === variantId) ?? firstAvailable;
-  const media = mediaFor(product.kind, variant);
+  const media = resolveMedia(product, variant);
   const maxQty = variant ? Math.min(variant.available, MAX_LINE_QTY) : 0;
   const quantity = Math.max(1, Math.min(qty, Math.max(maxQty, 1)));
   const soldOut = !variant || maxQty <= 0;

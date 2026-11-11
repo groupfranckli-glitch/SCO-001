@@ -28,8 +28,22 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+const supabaseHostname = (() => {
+  try {
+    return new URL(supabaseHost).hostname;
+  } catch {
+    return "";
+  }
+})();
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: supabaseHostname
+      ? [{ protocol: "https", hostname: supabaseHostname, pathname: "/storage/v1/object/public/site-media/**" }]
+      : [],
+  },
+  experimental: { serverActions: { bodySizeLimit: "5mb" } },
   productionBrowserSourceMaps: false,
   async headers() {
     return [

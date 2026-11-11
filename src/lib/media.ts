@@ -72,6 +72,14 @@ export function mediaFor(kind: ProductKind, v?: VariantLike | null): Media {
   return (v && variantMedia(kind, v)) || FALLBACK[kind];
 }
 
+/** Photo à afficher : celle de la variante (admin), sinon l'image fournie pour cette variante, sinon la photo du produit, sinon l'image de la gamme. */
+export function resolveMedia(
+  product: { kind: ProductKind; photo?: Media | null },
+  variant?: { color: string | null; flavor: string | null; photo?: Media | null } | null,
+): Media {
+  return variant?.photo ?? (variant ? variantMedia(product.kind, variant) : null) ?? product.photo ?? mediaFor(product.kind);
+}
+
 /** Caractéristiques affichées sous la description, d'après les emballages et visuels fournis. */
 export const SPECS: Record<ProductKind, string[]> = {
   nexbar: [

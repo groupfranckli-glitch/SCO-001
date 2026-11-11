@@ -1,5 +1,6 @@
 import { createPublicClient } from "@/lib/supabase/public";
-import { norm, type ProductKind } from "@/lib/media";
+import { norm, type Media, type ProductKind } from "@/lib/media";
+import { publicUrl } from "@/lib/storage-url";
 
 export type Variant = {
   id: string;
@@ -10,6 +11,8 @@ export type Variant = {
   priceFcfa: number;
   /** Quantité réellement vendable : stock physique moins stock réservé. */
   available: number;
+  /** Photo téléversée depuis l'admin pour cette variante (sinon photo du produit ou image fournie). */
+  photo: Media | null;
 };
 
 export type Product = {
@@ -24,7 +27,11 @@ export type Product = {
   variants: Variant[];
   priceFrom: number | null;
   inStock: boolean;
+  photo: Media | null;
 };
+
+type ImageRow = { variant_id: string | null; storage_path: string; bg: string; fit: "contain" | "cover" };
+const toMedia = (i: ImageRow): Media => ({ src: publicUrl(i.storage_path), bg: i.bg, fit: i.fit });
 
 type Row = {
   id: string;
@@ -44,6 +51,7 @@ type Row = {
     stock_reserved: number;
     is_active: boolean;
   }[];
+  product_images?: ImageRow[] | null;
 };
 
 export function availableQty(onHand: number, reserved: number): number {
@@ -51,6 +59,9 @@ export function availableQty(onHand: number, reserved: number): number {
 }
 
 export function mapProduct(r: Row): Product {
+  const images = r.product_images ?? [];
+  const byVariant = new Map(images.filter((i) => i.variant_id).map((i) => [i.variant_id as string, toMedia(i)]));
+  const productImage = images.find((i) => !i.variant_id);
   const variants: Variant[] = r.product_variants
     .filter((v) => v.is_active)
     .map((v) => ({
@@ -61,6 +72,7 @@ export function mapProduct(r: Row): Product {
       label: v.color ?? v.flavor ?? r.name,
       priceFcfa: v.price_fcfa,
       available: availableQty(v.stock_on_hand, v.stock_reserved),
+      photo: byVariant.get(v.id) ?? null,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "fr"));
   return {
@@ -75,11 +87,12 @@ export function mapProduct(r: Row): Product {
     variants,
     priceFrom: variants.length ? Math.min(...variants.map((v) => v.priceFcfa)) : null,
     inStock: variants.some((v) => v.available > 0),
+    photo: productImage ? toMedia(productImage) : null,
   };
 }
 
 const SELECT =
-  "id,slug,name,kind,description,puffs,categories(slug,name),product_variants(id,sku,color,flavor,price_fcfa,stock_on_hand,stock_reserved,is_active)";
+  "id,slug,name,kind,description,puffs,categories(slug,name),product_variants(id,sku,color,flavor,price_fcfa,stock_on_hand,stock_reserved,is_active),product_images(variant_id,storage_path,bg,fit)";
 
 /** Ordre d'affichage : gamme NexPOD (batterie, recharge, kit) puis NexBAR. */
 const KIND_ORDER: Record<ProductKind, number> = { nexpod_battery: 0, nexpod_refill: 1, nexpod_kit: 2, nexbar: 3 };
@@ -137,3 +150,4 @@ export async function getHomeSections(): Promise<HomeSection[]> {
     .order("position");
   return (data ?? []) as HomeSection[];
 }
+
