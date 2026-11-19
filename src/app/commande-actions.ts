@@ -1,6 +1,7 @@
 "use server";
 
 import { checkoutSchema, promoDiscount } from "@/lib/checkout";
+import { allow } from "@/lib/rate-limit";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type PlaceOrderResult = { ok: true; number: string } | { ok: false; error: string };
@@ -23,6 +24,7 @@ export async function placeOrder(input: unknown): Promise<PlaceOrderResult> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, error: "Connectez-vous pour finaliser votre commande." };
+  if (!(await allow(`order:${auth.user.id}`, 8, 600))) return { ok: false, error: ERRORS.rate_limited };
 
   try {
     const service = createServiceClient();
@@ -58,6 +60,7 @@ export async function checkPromo(code: string, subtotal: number): Promise<PromoR
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, error: "Connectez-vous pour utiliser un code promo." };
+  if (!(await allow(`promo:${auth.user.id}`, 30, 600))) return { ok: false, error: "Trop d'essais. Patientez quelques minutes." };
   const clean = code.trim().toUpperCase().slice(0, 30);
   if (clean.length < 3 || !Number.isFinite(subtotal) || subtotal <= 0) return { ok: false, error: "Code promo invalide." };
   try {

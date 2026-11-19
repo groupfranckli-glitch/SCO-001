@@ -76,6 +76,8 @@ const VARIANT_ROWS = [
   { id: "00000000-0000-4000-8000-0000000000a2", sku: "NB-DA", color: null, flavor: "Double Apple", stock_on_hand: 40, stock_reserved: 2, is_active: true, products: { name: "NexBAR 10K" } },
 ];
 const calls = { orders: [], admin: [] };
+const created = new Set();
+const table0 = (url) => url.pathname.replace("/rest/v1/", "");
 const userFor = (auth) => (auth === "Bearer test-token" ? CUSTOMER : auth === "Bearer admin-token" ? ADMIN : null);
 
 http
@@ -102,6 +104,25 @@ http
     if (url.pathname === "/auth/v1/user") {
       const u = userFor(req.headers.authorization ?? "");
       return u ? json(200, u) : json(401, { message: "invalid" });
+    }
+    if (url.pathname === "/auth/v1/token" && req.method === "POST") {
+      return body((b) => {
+        if ((b.email === "client@test.fr" || created.has(b.email)) && b.password === "Bon-mot-de-passe-1")
+          return json(200, { access_token: "test-token", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: "r", user: CUSTOMER });
+        if (b.email === "nonconfirme@test.fr") return json(400, { code: 400, error_code: "email_not_confirmed", msg: "Email not confirmed" });
+        return json(400, { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" });
+      });
+    }
+    if (url.pathname === "/auth/v1/admin/users" && req.method === "POST") {
+      return body((b) => {
+        calls.admin.push({ fn: "createUser", ...b });
+        if (b.email === "existe@test.fr") return json(422, { code: 422, error_code: "email_exists", msg: "A user with this email address has already been registered" });
+        created.add(b.email);
+        json(200, { ...CUSTOMER, email: b.email });
+      });
+    }
+    if (table0(url) === "rpc/rate_limit_hit") {
+      return body((b) => json(200, !String(b.p_key).includes("limite@")));
     }
     if (url.pathname.startsWith("/storage/v1/object/")) {
       let n = 0;

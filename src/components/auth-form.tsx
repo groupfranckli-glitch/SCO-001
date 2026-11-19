@@ -16,6 +16,9 @@ export function AuthForm({ mode, next }: { mode: "connexion" | "inscription"; ne
     <form action={action} className="card mx-auto mt-10 w-full max-w-md space-y-5 p-7 sm:p-9" noValidate={false}>
       <input type="hidden" name="next" value={next} />
       {mode === "inscription" && (
+        <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" />
+      )}
+      {mode === "inscription" && (
         <label className="block text-sm">
           Nom complet
           <input name="name" required minLength={2} maxLength={80} autoComplete="name" className={field} />
