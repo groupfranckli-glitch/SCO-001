@@ -42,7 +42,7 @@ test("trop de tentatives : le visiteur est freiné", async ({ page }) => {
   await expect(page.locator("p[role=alert]:visible").first()).toContainText("Trop de tentatives");
 });
 
-test("inscription : compte créé et activé côté serveur, client connecté sans e-mail de confirmation", async ({ page, request }) => {
+test("inscription : un code est envoyé par e-mail, le client le saisit et arrive dans son compte", async ({ page, request }) => {
   await open(page, "inscription");
   const f = form(page);
   const email = `nouveau-${Date.now()}-${Math.floor(Math.random() * 1e6)}@test.fr`;
@@ -51,9 +51,29 @@ test("inscription : compte créé et activé côté serveur, client connecté sa
   await f.locator("input[name=password]").fill(PASSWORD);
   await f.locator("input[name=adult]").check();
   await f.getByRole("button", { name: "Créer mon compte" }).click();
-  await expect(page).toHaveURL(/\/compte/);
+  await expect(page.getByText("Vérifiez votre e-mail")).toBeVisible();
+  await expect(page.getByText(email).first()).toBeVisible();
   const c = await calls(request);
-  expect(c.some((x) => x.fn === "createUser" && x.email === email && x.email_confirm === true)).toBe(true);
+  expect(c.some((x) => x.fn === "signUp" && x.email === email)).toBe(true);
+  // mauvais code puis bon code
+  await page.locator("input[name=token]").fill("000000");
+  await page.getByRole("button", { name: "Valider le code" }).click();
+  await expect(page.locator("p[role=alert]:visible").first()).toContainText("Code incorrect ou expiré");
+  await page.locator("input[name=token]").fill("123456");
+  await page.getByRole("button", { name: "Valider le code" }).click();
+  await expect(page).toHaveURL(/\/compte/);
+});
+
+test("inscription : renvoi d'un nouveau code", async ({ page }) => {
+  await open(page, "inscription");
+  const f = form(page);
+  await f.locator("input[name=name]").fill("Awa Koné");
+  await f.locator("input[name=email]").fill(`renvoi-${Date.now()}@test.fr`);
+  await f.locator("input[name=password]").fill(PASSWORD);
+  await f.locator("input[name=adult]").check();
+  await f.getByRole("button", { name: "Créer mon compte" }).click();
+  await page.getByRole("button", { name: "Renvoyer un code" }).click();
+  await expect(page.getByText("nouveau code vient d'être envoyé")).toBeVisible();
 });
 
 test("inscription avec une adresse déjà utilisée : message clair", async ({ page }) => {

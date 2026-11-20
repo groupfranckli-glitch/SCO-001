@@ -113,6 +113,24 @@ http
         return json(400, { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" });
       });
     }
+    if (url.pathname === "/auth/v1/signup" && req.method === "POST") {
+      return body((b) => {
+        calls.admin.push({ fn: "signUp", email: b.email, data: b.data });
+        const identities = b.email === "existe@test.fr" ? [] : [{ id: "i" }];
+        json(200, { ...CUSTOMER, email: b.email, identities, email_confirmed_at: null });
+      });
+    }
+    if (url.pathname === "/auth/v1/verify" && req.method === "POST") {
+      return body((b) => {
+        calls.admin.push({ fn: "verify", email: b.email, type: b.type });
+        if (b.token !== "123456") return json(403, { code: 403, error_code: "otp_expired", msg: "Token has expired or is invalid" });
+        created.add(b.email);
+        json(200, { access_token: "test-token", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: "r", user: CUSTOMER });
+      });
+    }
+    if (url.pathname === "/auth/v1/resend" && req.method === "POST") {
+      return body((b) => { calls.admin.push({ fn: "resend", email: b.email }); json(200, {}); });
+    }
     if (url.pathname === "/auth/v1/admin/users" && req.method === "POST") {
       return body((b) => {
         calls.admin.push({ fn: "createUser", ...b });
