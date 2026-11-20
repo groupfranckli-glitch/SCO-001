@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 
 export { BUCKET, publicUrl } from "@/lib/storage-url";
@@ -21,19 +22,33 @@ export const slotSetting = (k: SlotKey) => `img_${k}`;
 
 export type SlotImages = Record<SlotKey, string | null>;
 
-/** Images personnalisées (URL publique) ou null quand on garde l'image par défaut. Ne lève jamais : le site reste affichable. */
-export async function getSlotImages(): Promise<SlotImages> {
-  const out = Object.fromEntries(SLOTS.map((s) => [s.key, null])) as SlotImages;
-  try {
-    const { data } = await createPublicClient().from("site_settings").select("key,value").in("key", SLOTS.map((s) => slotSetting(s.key)));
-    for (const r of data ?? []) {
-      const slot = SLOTS.find((s) => slotSetting(s.key) === r.key);
-      if (slot && typeof r.value === "string" && r.value) out[slot.key] = publicUrl(r.value);
-    }
-  } catch {
-    /* valeurs par défaut */
+/** Lecture mise en cache (étiquette « site-media », renouvelée dès qu'un média est modifié dans l'admin) : le logo fait partie
+ *  de la page livrée immédiatement, sans clignotement de l'ancien logo. En cas d'erreur, durée de cache minimale. */
+async function readSlotImages(): Promise<SlotImages> {
+  "use cache";
+  cacheTag("site-media");
+  const OUT_DEFAULT = Object.fromEntries(SLOTS.map((s) => [s.key, null])) as SlotImages;
+  const out = { ...OUT_DEFAULT };
+  const { data, error } = await createPublicClient().from("site_settings").select("key,value").in("key", SLOTS.map((s) => slotSetting(s.key)));
+  if (error) {
+    cacheLife("seconds"); // échec : on ne garde pas les valeurs par défaut en mémoire
+    return OUT_DEFAULT;
+  }
+  cacheLife("hours");
+  for (const r of data ?? []) {
+    const slot = SLOTS.find((s) => slotSetting(s.key) === r.key);
+    if (slot && typeof r.value === "string" && r.value) out[slot.key] = publicUrl(r.value);
   }
   return out;
+}
+
+/** Images personnalisées (URL publique) ou null quand on garde l'image par défaut. Ne lève jamais : le site reste affichable. */
+export async function getSlotImages(): Promise<SlotImages> {
+  try {
+    return await readSlotImages();
+  } catch {
+    return Object.fromEntries(SLOTS.map((s) => [s.key, null])) as SlotImages;
+  }
 }
 
 export type Banner = { id: string; title: string; alt: string | null; href: string | null; url: string };

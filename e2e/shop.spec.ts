@@ -63,7 +63,8 @@ test.describe("parcours visuel", () => {
     await expect(page.getByTestId("collection-tile")).toHaveCount(5);
     await imagesLoaded(page);
     await noOverflow(page);
-    await page.getByTestId("collection-tile").filter({ hasText: "NexBAR" }).click();
+    await expect(page.getByTestId("collection-tile")).toHaveCount(5);
+    await page.getByTestId("collection-tile").filter({ hasText: "NexBAR" }).first().click();
     await expect(page).toHaveURL(/\/boutique\/nexbar$/);
   });
 

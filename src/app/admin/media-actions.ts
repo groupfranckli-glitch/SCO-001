@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { getAdmin } from "@/lib/admin";
 import { MAX_IMAGE_BYTES, sniffImage } from "@/lib/image-validate";
@@ -45,6 +45,7 @@ async function audit(db: Db, adminId: string, action: string, details: object) {
 }
 
 const refresh = () => {
+  updateTag("site-media");
   for (const p of ["/", "/boutique", "/produit", "/admin"]) revalidatePath(p, "layout");
 };
 

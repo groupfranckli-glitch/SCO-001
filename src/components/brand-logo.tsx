@@ -7,10 +7,10 @@ async function Resolved({ light, href }: { light: boolean; href?: string }) {
   return <Logo light={light} href={href} imageUrl={light ? (img.logo_light ?? img.logo) : img.logo} />;
 }
 
-/** Logo du site : celui téléversé depuis l'admin, sinon le logo par défaut (aussi affiché pendant le chargement). */
+/** Logo du site : celui téléversé depuis l'admin, sinon le logo par défaut. Pendant un chargement exceptionnel, une réserve vide évite de montrer l\u2019ancien logo. */
 export function BrandLogo({ light = false, href }: { light?: boolean; href?: string }) {
   return (
-    <Suspense fallback={<Logo light={light} href={href} />}>
+    <Suspense fallback={<span aria-hidden="true" className="inline-block h-9 w-28" />}>
       <Resolved light={light} href={href} />
     </Suspense>
   );

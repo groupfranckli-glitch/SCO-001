@@ -179,7 +179,7 @@ http
     if (table === "order_items") return json(200, [{ product_name: "NexBAR 10K", variant_label: "Mangue", quantity: 2, unit_price_fcfa: 10000, orders: { status: "delivered", delivery_commune: "Cocody" } }]);
     if (table === "payments") return json(200, [{ id: "p1", provider: "cash_on_delivery", status: "pending", amount_fcfa: 19000, created_at: "2026-11-01T10:00:00Z", orders: { order_number: "SP-TEST-0001" } }]);
     if (table === "audit_log") return json(200, [{ id: 1, action: "order.status", entity: "order", entity_id: "x", details: { to: "confirmed" }, created_at: "2026-11-01T10:00:00Z" }]);
-    if (table === "site_settings") return json(200, [{ key: "home_title", value: "Titre depuis l'admin" }]);
+    if (table === "site_settings") return json(200, [{ key: "home_title", value: "Titre depuis l'admin" }, { key: "contact_whatsapp", value: "+225 07 11 22 33 44" }, { key: "contact_email", value: "contact@scopuff.test" }, { key: "contact_hours", value: "Tous les jours, 9h – 21h" }]);
     if (table === "promo_codes") {
       if (!eq(url, "code") && !url.search.includes("code=eq")) return json(200, [{ code: "WELCOME10", kind: "percent", value: 10, min_subtotal_fcfa: 0, max_uses: null, used_count: 3, expires_at: null, is_active: true }]);
       return reply(eq(url, "code") === "WELCOME10"

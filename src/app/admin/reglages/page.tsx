@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { ActionForm } from "@/components/admin/action-form";
 import { AdminPage, Title, card } from "@/components/admin/page-shell";
-import { addZone, saveHome, saveZone } from "@/app/admin/modules-actions";
+import { addZone, saveContact, saveHome, saveZone } from "@/app/admin/modules-actions";
+import { getContact } from "@/lib/contact";
 import { getHomeContent } from "@/lib/home";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,6 +14,7 @@ async function Content() {
     supabase.from("delivery_zones").select("commune,fee_fcfa,is_active").order("position"),
     getHomeContent(),
   ]);
+  const contact = await getContact();
   return (
     <>
       <Title hint="Contenu de la page d'entrée et frais de livraison par commune d'Abidjan.">Réglages</Title>
@@ -26,6 +28,21 @@ async function Content() {
             { name: "home_title", label: "Titre", value: home.title, wide: true, required: true },
             { name: "home_text", label: "Texte", value: home.text, wide: true, required: true },
             { name: "home_cta", label: "Bouton", value: home.cta, required: true },
+          ]}
+        />
+      </div>
+
+      <h2 className="display mt-12 text-3xl">Contacts du pied de page</h2>
+      <div className={`${card} mt-4 p-5`} data-testid="contact-form">
+        <ActionForm
+          action={saveContact}
+          submit="Publier"
+          fields={[
+            { name: "contact_phone", label: "Téléphone", value: contact.contact_phone, placeholder: "+225 07 00 00 00 00" },
+            { name: "contact_whatsapp", label: "WhatsApp", value: contact.contact_whatsapp, placeholder: "+225 07 00 00 00 00" },
+            { name: "contact_email", label: "E-mail", type: "email", value: contact.contact_email },
+            { name: "contact_address", label: "Zone / adresse", value: contact.contact_address, wide: true },
+            { name: "contact_hours", label: "Horaires", value: contact.contact_hours, placeholder: "Tous les jours, 9h – 21h", wide: true },
           ]}
         />
       </div>

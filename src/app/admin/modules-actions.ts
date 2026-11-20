@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { getAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/stats";
@@ -155,6 +155,24 @@ export async function saveHome(input: unknown): Promise<AdminResult> {
     async (d: { home_title: string; home_text: string; home_cta: string }, _a, db) =>
       db.from("site_settings").upsert(Object.entries(d).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }))),
   );
+}
+
+const phone = z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.union([z.literal(""), z.string().regex(/^\+?[0-9 ]{8,20}$/, "Numéro invalide (chiffres, espaces, + autorisés)")]));
+export async function saveContact(input: unknown): Promise<AdminResult> {
+  const r = await run(
+    z.object({
+      contact_phone: phone,
+      contact_whatsapp: phone,
+      contact_email: z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.union([z.literal(""), z.string().email("Adresse e-mail invalide").max(120)])),
+      contact_address: z.string().trim().max(160),
+      contact_hours: z.string().trim().max(120),
+    }),
+    input, "settings.contact", "settings", ["/"],
+    async (d: Record<string, string>, _a, db) =>
+      db.from("site_settings").upsert(Object.entries(d).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }))),
+  );
+  if (r.ok) updateTag("site-contact");
+  return r;
 }
 
 // ---------- Livraisons, équipe ----------
