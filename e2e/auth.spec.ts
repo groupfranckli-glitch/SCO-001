@@ -76,6 +76,17 @@ test("inscription : renvoi d'un nouveau code", async ({ page }) => {
   await expect(page.getByText("nouveau code vient d'être envoyé")).toBeVisible();
 });
 
+test("inscription : si l'envoi du code échoue, le client n'est pas bloqué (repli serveur)", async ({ page }) => {
+  await open(page, "inscription");
+  const f = form(page);
+  await f.locator("input[name=name]").fill("Awa Koné");
+  await f.locator("input[name=email]").fill(`mailko-${Date.now()}@test.fr`);
+  await f.locator("input[name=password]").fill(PASSWORD);
+  await f.locator("input[name=adult]").check();
+  await f.getByRole("button", { name: "Créer mon compte" }).click();
+  await expect(page).toHaveURL(/\/compte/);
+});
+
 test("inscription avec une adresse déjà utilisée : message clair", async ({ page }) => {
   await open(page, "inscription");
   const f = form(page);

@@ -79,14 +79,15 @@ test.describe("parcours visuel", () => {
     await expect(sheet.getByTestId("price")).toHaveText(/10\s000\sFCFA/);
 
     const img = sheet.locator("img").first();
-    await sheet.getByRole("radio", { name: "Rouge" }).click();
+    await sheet.getByRole("button", { name: "Voir Rouge" }).click();
     await expect(img).toHaveAttribute("src", /battery-rouge/);
-    await sheet.getByRole("radio", { name: "Noir" }).click();
+    await sheet.getByRole("button", { name: "Voir Noir" }).click();
     await expect(img).toHaveAttribute("src", /battery-noir/);
 
-    await sheet.getByRole("radio", { name: /Violet/ }).click();
+    await sheet.getByRole("button", { name: /Voir Violet/ }).click();
     await expect(sheet.getByTestId("stock")).toHaveText("Épuisé");
-    await expect(sheet.getByTestId("add-to-cart")).toBeDisabled();
+    await expect(sheet.getByRole("button", { name: "Augmenter Violet" })).toHaveCount(0); // épuisé : pas de sélecteur
+    await expect(sheet.getByTestId("add-to-cart")).toBeDisabled(); // rien de choisi
     await expect(sheet.getByTestId("order-now")).toBeDisabled();
   });
 
@@ -94,8 +95,8 @@ test.describe("parcours visuel", () => {
     await page.goto("/boutique/nexbar");
     const sheet = page.getByTestId("product-sheet");
     await expect(sheet.getByTestId("variant-option")).toHaveCount(3);
-    await expect(sheet.getByRole("radio", { name: /Desactivee/ })).toHaveCount(0);
-    await sheet.getByRole("radio", { name: "Peach Ice" }).click();
+    await expect(sheet.getByRole("button", { name: /Desactivee/ })).toHaveCount(0);
+    await sheet.getByRole("button", { name: "Voir Peach Ice" }).click();
     await expect(sheet.locator("img").first()).toHaveAttribute("src", /peach-ice/);
   });
 
@@ -104,10 +105,11 @@ test.describe("parcours visuel", () => {
     const sheet = page.getByTestId("product-sheet").first();
     // Bleu est la 1re couleur vendable (stock 3)
     await expect(sheet.getByTestId("stock")).toHaveText("Plus que 3 en stock");
-    const plus = sheet.getByRole("button", { name: "Augmenter la quantité" });
+    const plus = sheet.getByRole("button", { name: "Augmenter Bleu" });
     await plus.click();
     await plus.click();
-    await expect(sheet.getByTestId("qty")).toHaveText("3");
+    await plus.click();
+    await expect(sheet.getByTestId("option-qty").first()).toHaveText("3");
     await expect(plus).toBeDisabled();
 
     await sheet.getByTestId("add-to-cart").click();
@@ -133,12 +135,30 @@ test.describe("parcours visuel", () => {
 
   test("« Commander » ajoute au panier puis ouvre le panier", async ({ page }) => {
     await page.goto("/boutique/nexbar");
+    await expect(page.getByTestId("order-now")).toBeDisabled(); // rien choisi
+    await page.getByRole("button", { name: "Augmenter Peach Ice" }).click();
     await page.getByTestId("order-now").click();
     await expect(page).toHaveURL(/\/panier$/);
     await expect(page.getByTestId("cart-line")).toHaveCount(1);
     await page.getByTestId("checkout-link").click();
     await expect(page).toHaveURL(/\/commande$/);
     await expect(page.getByRole("heading", { name: /commande/i })).toBeVisible();
+  });
+
+  test("choix multiple : plusieurs saveurs avec leurs quantités dans un seul ajout", async ({ page }) => {
+    await page.goto("/boutique/nexbar");
+    const sheet = page.getByTestId("product-sheet");
+    const rows = sheet.getByTestId("variant-option");
+    await expect(rows).toHaveCount(3);
+    const up = (i: number) => rows.nth(i).getByRole("button", { name: /^Augmenter / });
+    await up(0).click();
+    await up(0).click();
+    await up(1).click();
+    await expect(sheet.getByTestId("selection-summary")).toContainText("3 articles");
+    await sheet.getByTestId("add-to-cart").click();
+    await expect(page.getByTestId("cart-count")).toHaveText("3");
+    await page.goto("/panier");
+    await expect(page.getByTestId("cart-line")).toHaveCount(2);
   });
 
   test("un panier falsifié dans le navigateur est ignoré", async ({ page }) => {

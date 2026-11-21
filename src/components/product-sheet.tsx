@@ -32,37 +32,70 @@ export function ProductSheet({
   const router = useRouter();
   const { add } = useCart();
   const firstAvailable = product.variants.find((v) => v.available > 0) ?? product.variants[0];
-  const [variantId, setVariantId] = useState(firstAvailable?.id ?? "");
-  const [qty, setQty] = useState(1);
+  const showOptions = product.variants.length > 1;
+  // Quantité choisie par variante : on peut composer plusieurs saveurs / couleurs en une seule fois.
+  const [qtys, setQtys] = useState<Record<string, number>>(() => (!showOptions && firstAvailable && firstAvailable.available > 0 ? { [firstAvailable.id]: 1 } : {}));
+  const [focusId, setFocusId] = useState(firstAvailable?.id ?? "");
   const [added, setAdded] = useState(false);
 
-  const variant = product.variants.find((v) => v.id === variantId) ?? firstAvailable;
+  const variant = product.variants.find((v) => v.id === focusId) ?? firstAvailable;
   const media = resolveMedia(product, variant);
-  const maxQty = variant ? Math.min(variant.available, MAX_LINE_QTY) : 0;
-  const quantity = Math.max(1, Math.min(qty, Math.max(maxQty, 1)));
-  const soldOut = !variant || maxQty <= 0;
   const stock = stockText(variant?.available ?? 0);
   const specs = SPECS[product.kind];
-  const optionLabel = product.kind === "nexpod_battery" || product.kind === "nexpod_kit" ? "Couleur" : "Saveur";
-  const showOptions = product.variants.length > 1;
+  const optionLabel = product.kind === "nexpod_battery" || product.kind === "nexpod_kit" ? "Couleurs" : "Saveurs";
   const reverse = index % 2 === 1;
 
+  const maxFor = (v: { available: number }) => Math.min(v.available, MAX_LINE_QTY);
+  const qtyOf = (id: string) => qtys[id] ?? 0;
+  const chosen = product.variants.filter((v) => qtyOf(v.id) > 0 && maxFor(v) > 0);
+  const totalQty = chosen.reduce((n, v) => n + qtyOf(v.id), 0);
+  const totalPrice = chosen.reduce((n, v) => n + qtyOf(v.id) * v.priceFcfa, 0);
+  const soldOut = !product.variants.some((v) => v.available > 0);
+  const empty = totalQty === 0;
+
+  function setQty(id: string, next: number) {
+    const v = product.variants.find((x) => x.id === id);
+    if (!v) return;
+    setQtys((q) => ({ ...q, [id]: Math.max(0, Math.min(next, maxFor(v))) }));
+    setFocusId(id);
+    setAdded(false);
+  }
+
   function addToCart(): boolean {
-    if (!variant || soldOut) return false;
-    add(
-      {
-        variantId: variant.id,
-        productSlug: product.slug,
-        productName: product.name,
-        label: variant.label,
-        unitPrice: variant.priceFcfa,
-        maxQty: variant.available,
-        image: media.src,
-      },
-      quantity,
-    );
+    if (empty) return false;
+    for (const v of chosen) {
+      add(
+        {
+          variantId: v.id,
+          productSlug: product.slug,
+          productName: product.name,
+          label: v.label,
+          unitPrice: v.priceFcfa,
+          maxQty: v.available,
+          image: resolveMedia(product, v).src,
+        },
+        qtyOf(v.id),
+      );
+    }
     return true;
   }
+
+  const stepper = (v: { id: string; label: string; available: number }) => {
+    const q = qtyOf(v.id);
+    return (
+      <div className="inline-flex h-11 items-center rounded-full border border-line bg-surface" role="group" aria-label={showOptions ? `Quantité ${v.label}` : "Quantité"}>
+        <button type="button" aria-label={showOptions ? `Diminuer ${v.label}` : "Diminuer la quantité"} disabled={q <= 0} onClick={() => setQty(v.id, q - 1)} className="grid h-11 w-11 place-items-center text-lg disabled:opacity-30">
+          −
+        </button>
+        <span className="w-7 text-center text-sm tabular-nums" data-testid={showOptions ? "option-qty" : "qty"} aria-live="polite">
+          {q}
+        </span>
+        <button type="button" aria-label={showOptions ? `Augmenter ${v.label}` : "Augmenter la quantité"} disabled={q >= maxFor(v)} onClick={() => setQty(v.id, q + 1)} className="grid h-11 w-11 place-items-center text-lg disabled:opacity-30">
+          +
+        </button>
+      </div>
+    );
+  };
 
   return (
     <article
@@ -113,86 +146,43 @@ export function ProductSheet({
         {showOptions && (
           <fieldset className="mt-7">
             <legend className="eyebrow mb-3">
-              {optionLabel} · <span className="normal-case tracking-normal text-ink">{variant?.label}</span>
+              {optionLabel} · <span className="normal-case tracking-normal text-ink">choisissez-en une ou plusieurs</span>
             </legend>
-            <div role="radiogroup" aria-label={optionLabel} className="flex flex-wrap gap-2">
+            <ul className="space-y-2" aria-label={optionLabel}>
               {product.variants.map((v) => {
-                const selected = v.id === variant?.id;
                 const swatch = SWATCH[norm(v.color)];
+                const q = qtyOf(v.id);
+                const out = v.available <= 0;
                 return (
-                  <button
+                  <li
                     key={v.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
                     data-testid="variant-option"
-                    onClick={() => {
-                      setVariantId(v.id);
-                      setAdded(false);
-                    }}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition ${
-                      selected ? "border-ink bg-ink text-background" : "border-line bg-surface hover:border-ink"
-                    } ${v.available <= 0 ? "opacity-50" : ""}`}
+                    className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 transition ${q > 0 ? "border-ink bg-surface" : "border-line bg-surface"} ${out ? "opacity-50" : ""}`}
                   >
-                    {swatch && (
-                      <span
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5 rounded-full border border-white/40"
-                        style={{ background: swatch }}
-                      />
-                    )}
-                    {v.label}
-                    {v.available <= 0 && <span className="sr-only"> (épuisé)</span>}
-                  </button>
+                    <button type="button" className="flex min-h-11 flex-1 items-center gap-3 text-left text-sm" onClick={() => setFocusId(v.id)} aria-label={`Voir ${v.label}`}>
+                      {swatch && <span aria-hidden="true" className="h-4 w-4 rounded-full border border-line" style={{ background: swatch }} />}
+                      <span>
+                        {v.label}
+                        <span className={`block text-xs ${out ? "text-danger" : "text-ink-soft"}`}>{out ? "Épuisé" : v.available <= 5 ? `Plus que ${v.available}` : formatFcfa(v.priceFcfa)}</span>
+                      </span>
+                    </button>
+                    {out ? <span className="pr-2 text-xs text-danger">Épuisé</span> : stepper(v)}
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </fieldset>
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <div className="inline-flex h-12 items-center rounded-full border border-line bg-surface" role="group" aria-label="Quantité">
-            <button
-              type="button"
-              aria-label="Diminuer la quantité"
-              disabled={quantity <= 1}
-              onClick={() => {
-                setQty(quantity - 1);
-                setAdded(false);
-              }}
-              className="grid h-12 w-12 place-items-center text-lg disabled:opacity-30"
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-sm tabular-nums" data-testid="qty" aria-live="polite">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              aria-label="Augmenter la quantité"
-              disabled={quantity >= maxQty}
-              onClick={() => {
-                setQty(quantity + 1);
-                setAdded(false);
-              }}
-              className="grid h-12 w-12 place-items-center text-lg disabled:opacity-30"
-            >
-              +
-            </button>
-          </div>
-          <button
-            type="button"
-            className="pill pill-ghost"
-            disabled={soldOut}
-            data-testid="add-to-cart"
-            onClick={() => setAdded(addToCart())}
-          >
-            Ajouter au panier
+          {!showOptions && variant && !soldOut && stepper(variant)}
+          <button type="button" className="pill pill-ghost" disabled={empty} data-testid="add-to-cart" onClick={() => setAdded(addToCart())}>
+            {showOptions ? "Ajouter la sélection" : "Ajouter au panier"}
           </button>
           <button
             type="button"
             className="pill"
-            disabled={soldOut}
+            disabled={empty}
             data-testid="order-now"
             onClick={() => {
               if (addToCart()) router.push("/panier");
@@ -201,6 +191,11 @@ export function ProductSheet({
             Commander
           </button>
         </div>
+        {showOptions && (
+          <p className="mt-3 text-sm text-ink-soft" data-testid="selection-summary" aria-live="polite">
+            {empty ? (soldOut ? "Produit épuisé." : "Aucune sélection pour le moment.") : `${totalQty} article${totalQty > 1 ? "s" : ""} · ${formatFcfa(totalPrice)}`}
+          </p>
+        )}
 
         <p role="status" className="mt-4 min-h-6 text-sm text-accent-ink">
           {added && (

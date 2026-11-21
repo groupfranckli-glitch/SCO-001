@@ -116,6 +116,7 @@ http
     if (url.pathname === "/auth/v1/signup" && req.method === "POST") {
       return body((b) => {
         calls.admin.push({ fn: "signUp", email: b.email, data: b.data });
+        if (String(b.email).startsWith("mailko")) return json(500, { code: 500, error_code: "unexpected_failure", msg: "Error sending confirmation email" });
         const identities = b.email === "existe@test.fr" ? [] : [{ id: "i" }];
         json(200, { ...CUSTOMER, email: b.email, identities, email_confirmed_at: null });
       });

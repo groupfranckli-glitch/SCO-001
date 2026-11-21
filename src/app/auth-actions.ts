@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeNext } from "@/lib/auth";
 import { allow, clientIp } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type AuthState = { error?: string; info?: string; pending?: string };
 
@@ -62,6 +62,9 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     if (error.code === "weak_password") return { error: "Mot de passe trop facile à deviner. Choisissez-en un plus long ou plus original." };
     if (error.code === "over_email_send_rate_limit" || error.code === "over_request_rate_limit" || error.status === 429)
       return { error: "Trop d'e-mails envoyés. Patientez quelques minutes puis réessayez." };
+    // Le service d'e-mail refuse l'envoi (ex. domaine d'expédition pas encore vérifié) : repli sécurisé, le compte est
+    // créé et activé par le serveur afin que les clients ne soient jamais bloqués. Le code reste utilisé dès que l'envoi fonctionne.
+    if (error.status && error.status >= 500) return directSignUp(parsed.data, String(form.get("next") ?? ""));
     return { error: "Création du compte impossible pour le moment. Réessayez dans un instant." };
   }
   // Adresse déjà utilisée et confirmée : Supabase ne révèle rien (identities vide) ; on le dit sans ambiguïté utile.
@@ -69,6 +72,26 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     return { error: "Un compte existe déjà avec cette adresse e-mail. Connectez-vous." };
   if (data.session) redirect(safeNext(String(form.get("next") ?? ""))); // confirmation désactivée côté Supabase
   return { pending: parsed.data.email, info: `Un code à 6 chiffres vient d'être envoyé à ${parsed.data.email}.` };
+}
+
+async function directSignUp(d: { email: string; password: string; name: string }, next: string): Promise<AuthState> {
+  const { error: createError } = await createServiceClient().auth.admin.createUser({
+    email: d.email,
+    password: d.password,
+    email_confirm: true,
+    user_metadata: { full_name: d.name },
+  });
+  if (createError) {
+    console.error("signUp-direct", createError.code ?? "?", createError.status ?? "?");
+    if (createError.code === "email_exists" || createError.code === "user_already_exists")
+      return { error: "Un compte existe déjà avec cette adresse e-mail. Connectez-vous." };
+    if (createError.code === "weak_password") return { error: "Mot de passe trop facile à deviner. Choisissez-en un plus long ou plus original." };
+    return { error: "Création du compte impossible pour le moment. Réessayez dans un instant." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email: d.email, password: d.password });
+  if (error) return { info: "Compte créé. Vous pouvez maintenant vous connecter." };
+  redirect(safeNext(next));
 }
 
 const otpSchema = z.object({
