@@ -116,7 +116,7 @@ async function Content() {
           submit="Créer"
           resetOnSuccess
           fields={[
-            { name: "categorySlug", label: "Gamme", type: "select", options: [{ value: "nexpod", label: "NexPOD" }, { value: "nexbar", label: "NexBAR" }] },
+            { name: "categorySlug", label: "Gamme", type: "select", options: [{ value: "nexpod", label: "Kit NexPOD" }, { value: "batteries", label: "Batteries NexPOD" }, { value: "recharges", label: "Recharges NexPOD" }, { value: "nexbar", label: "NexBAR" }] },
             {
               name: "kind", label: "Type", type: "select",
               options: [

@@ -7,13 +7,16 @@ import { ProductSheet } from "@/components/product-sheet";
 import { getCategories, getProducts } from "@/lib/catalog";
 
 const INTRO: Record<string, string> = {
-  nexpod: "Un système pod : une batterie rechargeable, des recharges préremplies, ou un kit prêt à l'emploi.",
+  nexpod: "Le kit NexPOD : une batterie et une recharge, prêts à l'emploi. Choisissez une ou plusieurs couleurs.",
+  batteries: "La batterie rechargeable NexPOD, en quatre couleurs. Compatible avec toutes les recharges NexPOD.",
+  recharges: "Les recharges préremplies qui s'insèrent dans la batterie NexPOD. Choisissez une ou plusieurs saveurs.",
   nexbar: "La puff jetable 10 000 puffs, avec écrans de suivi et flux d'air réglable. À choisir selon la saveur.",
 };
+const TITLES: Record<string, string> = { nexpod: "Kit NexPOD", batteries: "Batteries NexPOD", recharges: "Recharges NexPOD", nexbar: "NexBAR" };
 
 export async function generateMetadata({ params }: PageProps<"/boutique/[category]">): Promise<Metadata> {
   const { category } = await params;
-  return { title: category.toUpperCase().replace("NEX", "Nex") };
+  return { title: TITLES[category] ?? "Boutique" };
 }
 
 async function Content({ params }: { params: PageProps<"/boutique/[category]">["params"] }) {

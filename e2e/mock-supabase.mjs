@@ -2,12 +2,17 @@
 import http from "node:http";
 
 const v = (id, sku, o) => ({ id, sku, is_active: true, color: null, flavor: null, stock_reserved: 0, ...o });
-const cat = { nexpod: { slug: "nexpod", name: "NexPOD" }, nexbar: { slug: "nexbar", name: "NexBAR" } };
+const cat = {
+  nexpod: { slug: "nexpod", name: "Kit NexPOD" },
+  batteries: { slug: "batteries", name: "Batteries NexPOD" },
+  recharges: { slug: "recharges", name: "Recharges NexPOD" },
+  nexbar: { slug: "nexbar", name: "NexBAR" },
+};
 
 const products = [
   {
     id: "p1", slug: "nexpod-batterie", name: "Batterie NexPOD", kind: "nexpod_battery", puffs: null,
-    description: "Batterie rechargeable compatible avec toutes les recharges NexPOD.", categories: cat.nexpod,
+    description: "Batterie rechargeable compatible avec toutes les recharges NexPOD.", categories: cat.batteries,
     product_variants: [
       v("v1", "NP-B-NOIR", { color: "Noir", price_fcfa: 10000, stock_on_hand: 12 }),
       v("v2", "NP-B-BLEU", { color: "Bleu", price_fcfa: 10000, stock_on_hand: 3 }),
@@ -16,8 +21,8 @@ const products = [
     ],
   },
   {
-    id: "p2", slug: "nexpod-recharge", name: "Recharge NexPOD", kind: "nexpod_refill", puffs: 5000,
-    description: "Recharge préremplie, prête à l'emploi.", categories: cat.nexpod,
+    id: "p2", slug: "nexpod-recharge", name: "Recharges NexPOD", kind: "nexpod_refill", puffs: 5000,
+    description: "Recharge préremplie, prête à l'emploi.", categories: cat.recharges,
     product_variants: [
       v("v5", "NP-R-MINT", { flavor: "Mint", price_fcfa: 6000, stock_on_hand: 8 }),
       v("v6", "NP-R-3M", { flavor: "Three Melons", price_fcfa: 6000, stock_on_hand: 8 }),
@@ -40,8 +45,10 @@ const products = [
   },
 ];
 const categories = [
-  { slug: "nexpod", name: "NexPOD", position: 1 },
-  { slug: "nexbar", name: "NexBAR", position: 2 },
+  { slug: "nexpod", name: "Kit NexPOD", position: 1 },
+  { slug: "batteries", name: "Batteries NexPOD", position: 2 },
+  { slug: "recharges", name: "Recharges NexPOD", position: 3 },
+  { slug: "nexbar", name: "NexBAR", position: 4 },
 ];
 
 const eq = (url, key) => {
@@ -180,7 +187,7 @@ http
     if (table === "order_items") return json(200, [{ product_name: "NexBAR 10K", variant_label: "Mangue", quantity: 2, unit_price_fcfa: 10000, orders: { status: "delivered", delivery_commune: "Cocody" } }]);
     if (table === "payments") return json(200, [{ id: "p1", provider: "cash_on_delivery", status: "pending", amount_fcfa: 19000, created_at: "2026-11-01T10:00:00Z", orders: { order_number: "SP-TEST-0001" } }]);
     if (table === "audit_log") return json(200, [{ id: 1, action: "order.status", entity: "order", entity_id: "x", details: { to: "confirmed" }, created_at: "2026-11-01T10:00:00Z" }]);
-    if (table === "site_settings") return json(200, [{ key: "home_title", value: "Titre depuis l'admin" }, { key: "contact_whatsapp", value: "+225 07 11 22 33 44" }, { key: "contact_email", value: "contact@scopuff.test" }, { key: "contact_hours", value: "Tous les jours, 9h – 21h" }]);
+    if (table === "site_settings") return json(200, [{ key: "home_title", value: "Titre depuis l'admin" }, { key: "contact_whatsapp", value: "+225 07 11 22 33 44" }, { key: "contact_email", value: "contact@scopuff.test" }, { key: "contact_hours", value: "Tous les jours, 9h – 21h" }, { key: "social_instagram", value: "@scopuff" }, { key: "social_facebook", value: "https://evil.example.com/x" }, { key: "contact_extra", value: "Service client | +225 07 55 66 77 88" }]);
     if (table === "promo_codes") {
       if (!eq(url, "code") && !url.search.includes("code=eq")) return json(200, [{ code: "WELCOME10", kind: "percent", value: 10, min_subtotal_fcfa: 0, max_uses: null, used_count: 3, expires_at: null, is_active: true }]);
       return reply(eq(url, "code") === "WELCOME10"

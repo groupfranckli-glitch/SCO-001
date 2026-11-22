@@ -43,6 +43,12 @@ async function Content() {
             { name: "contact_email", label: "E-mail", type: "email", value: contact.contact_email },
             { name: "contact_address", label: "Zone / adresse", value: contact.contact_address, wide: true },
             { name: "contact_hours", label: "Horaires", value: contact.contact_hours, placeholder: "Tous les jours, 9h – 21h", wide: true },
+            { name: "social_instagram", label: "Instagram (@nom ou lien)", value: contact.social_instagram, placeholder: "@scopuff", wide: true },
+            { name: "social_facebook", label: "Facebook (nom ou lien)", value: contact.social_facebook, wide: true },
+            { name: "social_tiktok", label: "TikTok (@nom ou lien)", value: contact.social_tiktok, wide: true },
+            { name: "social_youtube", label: "YouTube (@nom ou lien)", value: contact.social_youtube, wide: true },
+            { name: "social_x", label: "X (nom ou lien)", value: contact.social_x, wide: true },
+            { name: "contact_extra", label: "Autres contacts, une ligne chacun : Libellé | valeur", type: "textarea", value: contact.contact_extra, placeholder: "Service client | +225 07 00 00 00 00", wide: true },
           ]}
         />
       </div>

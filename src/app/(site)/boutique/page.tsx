@@ -9,15 +9,14 @@ import { getSlotImages } from "@/lib/site-media";
 
 export const metadata: Metadata = {
   title: "Boutique",
-  description: "NexPOD et NexBAR : batteries, recharges, kits et puffs jetables 10 000 puffs.",
+  description: "NexPOD et NexBAR : kit, batteries, recharges et puffs jetables 10 000 puffs.",
 };
 
 const LAYOUT: Record<string, string> = {
-  nexbar: "min-h-[26rem] md:row-span-2 md:min-h-0",
-  nexpod: "min-h-[17rem]",
-  batteries: "min-h-[17rem]",
-  recharges: "min-h-[17rem]",
-  kits: "min-h-[17rem]",
+  nexbar: "min-h-[22rem]",
+  nexpod: "min-h-[22rem]",
+  batteries: "min-h-[22rem]",
+  recharges: "min-h-[22rem]",
 };
 
 async function Tiles() {
@@ -27,7 +26,7 @@ async function Tiles() {
     return <p className="mt-12 text-ink-soft">Le catalogue est en cours de préparation. Revenez très bientôt.</p>;
   }
   return (
-    <div className="mt-10 grid gap-4 md:grid-cols-3 md:grid-rows-2 md:[grid-auto-rows:minmax(18rem,1fr)] md:[grid-auto-flow:dense]">
+    <div className="mt-10 grid gap-4 sm:grid-cols-2">
       {tiles.map((t, i) => (
         <CollectionTile key={t.key} tile={t} priority={i < 2} className={LAYOUT[t.key]} />
       ))}

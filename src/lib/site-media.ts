@@ -10,10 +10,9 @@ export const SLOTS = [
   { key: "logo_light", label: "Logo (fond sombre)", hint: "Version claire du logo, utilisée sur la photo d'accueil. Sinon le logo principal est repris.", fallback: null },
   { key: "hero", label: "Photo de la page d'entrée", hint: "Grande photo plein écran, format paysage ou carré, 1600 px de large.", fallback: "/products/nexpod-dark.jpg" },
   { key: "tile_nexbar", label: "Boutique · tuile NexBAR", hint: "Photo de la tuile NexBAR.", fallback: "/products/nexbar-peach-ice.jpg" },
-  { key: "tile_nexpod", label: "Boutique · tuile NexPOD", hint: "Photo de la tuile NexPOD.", fallback: "/products/nexpod-dark.jpg" },
+  { key: "tile_nexpod", label: "Boutique · tuile Kit NexPOD", hint: "Photo de la tuile Kit NexPOD.", fallback: "/products/nexpod-kit.jpg" },
   { key: "tile_batteries", label: "Boutique · tuile Batteries", hint: "Photo de la tuile Batteries.", fallback: "/products/nexpod-batteries.jpg" },
   { key: "tile_recharges", label: "Boutique · tuile Recharges", hint: "Photo de la tuile Recharges.", fallback: "/products/nexpod-mint.jpg" },
-  { key: "tile_kits", label: "Boutique · tuile Kits", hint: "Photo de la tuile Kits.", fallback: "/products/nexpod-kit.jpg" },
 ] as const;
 
 export type SlotKey = (typeof SLOTS)[number]["key"];

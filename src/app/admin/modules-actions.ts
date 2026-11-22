@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { getAdmin } from "@/lib/admin";
+import { parseExtra, socialUrl, type Network } from "@/lib/contact-links";
 import { slugify } from "@/lib/stats";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -64,7 +65,7 @@ export async function saveProduct(input: unknown): Promise<AdminResult> {
 export async function createProduct(input: unknown): Promise<AdminResult> {
   return run(
     z.object({
-      categorySlug: z.enum(["nexpod", "nexbar"]),
+      categorySlug: z.enum(["nexpod", "batteries", "recharges", "nexbar"]),
       kind: z.enum(["nexpod_battery", "nexpod_refill", "nexpod_kit", "nexbar"]),
       name: z.string().trim().min(2).max(80),
       description: optText(400),
@@ -157,6 +158,8 @@ export async function saveHome(input: unknown): Promise<AdminResult> {
   );
 }
 
+const socialField = (n: Network) =>
+  z.string().trim().max(200).refine((v) => v === "" || socialUrl(n, v) !== null, "Lien ou identifiant invalide (réseau officiel, https uniquement)");
 const phone = z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.union([z.literal(""), z.string().regex(/^\+?[0-9 ]{8,20}$/, "Numéro invalide (chiffres, espaces, + autorisés)")]));
 export async function saveContact(input: unknown): Promise<AdminResult> {
   const r = await run(
@@ -166,6 +169,12 @@ export async function saveContact(input: unknown): Promise<AdminResult> {
       contact_email: z.preprocess((v) => (typeof v === "string" ? v.trim() : v), z.union([z.literal(""), z.string().email("Adresse e-mail invalide").max(120)])),
       contact_address: z.string().trim().max(160),
       contact_hours: z.string().trim().max(120),
+      contact_extra: z.string().max(600).refine((v) => parseExtra(v).ok, "Chaque ligne : « Libellé | valeur » (60 caractères max par partie)"),
+      social_instagram: socialField("instagram"),
+      social_facebook: socialField("facebook"),
+      social_tiktok: socialField("tiktok"),
+      social_youtube: socialField("youtube"),
+      social_x: socialField("x"),
     }),
     input, "settings.contact", "settings", ["/"],
     async (d: Record<string, string>, _a, db) =>

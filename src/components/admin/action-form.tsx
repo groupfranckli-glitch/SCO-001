@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 export type Field = {
   name: string;
   label: string;
-  type?: "text" | "number" | "checkbox" | "select" | "date" | "email";
+  type?: "text" | "number" | "checkbox" | "select" | "date" | "email" | "textarea";
   value?: string | number | boolean | null;
   options?: { value: string; label: string }[];
   placeholder?: string;
@@ -78,6 +78,8 @@ export function ActionForm({
               <input name={fl.name} type="checkbox" defaultChecked={Boolean(fl.value)} className="h-4 w-4 accent-[var(--accent-ink)]" />
               {fl.label}
             </span>
+          ) : fl.type === "textarea" ? (
+            <textarea name={fl.name} defaultValue={fl.value == null ? "" : String(fl.value)} placeholder={fl.placeholder} rows={4} maxLength={600} className={`${cls} h-auto w-full py-2 normal-case tracking-normal`} />
           ) : (
             <input
               name={fl.name}

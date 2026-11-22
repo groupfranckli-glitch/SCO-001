@@ -31,8 +31,9 @@ describe("tuiles de la boutique", () => {
     expect(buildTiles([]).length).toBe(0);
     expect(buildTiles([prod("nexbar", "nexbar")]).map((t) => t.key)).toEqual(["nexbar"]);
   });
-  it("construit les cinq tuiles pour le catalogue complet", () => {
+  it("construit les quatre tuiles (kit, batteries, recharges, NexBAR) sans tuile « Kits » séparée", () => {
     const keys = buildTiles([prod("nexpod_battery", "nexpod"), prod("nexpod_refill", "nexpod"), prod("nexpod_kit", "nexpod"), prod("nexbar", "nexbar")]).map((t) => t.key);
-    expect(keys).toEqual(["nexbar", "nexpod", "batteries", "recharges", "kits"]);
+    expect(keys).toEqual(["nexbar", "nexpod", "batteries", "recharges"]);
+    expect(keys).not.toContain("kits");
   });
 });

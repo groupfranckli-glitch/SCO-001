@@ -58,37 +58,60 @@ test.describe("parcours visuel", () => {
     await expect(page).toHaveURL(/\/boutique$/);
   });
 
-  test("boutique : grille éditoriale de 5 tuiles, images chargées, sans débordement", async ({ page }) => {
+  test("boutique : grille de 4 tuiles, images chargées, sans débordement", async ({ page }) => {
     await page.goto("/boutique");
-    await expect(page.getByTestId("collection-tile")).toHaveCount(5);
+    await expect(page.getByTestId("collection-tile")).toHaveCount(4);
     await imagesLoaded(page);
     await noOverflow(page);
-    await expect(page.getByTestId("collection-tile")).toHaveCount(5);
+    await expect(page.getByTestId("collection-tile")).toHaveCount(4);
     await page.getByTestId("collection-tile").filter({ hasText: "NexBAR" }).first().click();
     await expect(page).toHaveURL(/\/boutique\/nexbar$/);
   });
 
-  test("catégorie NexPOD : fiches alternées, variante → prix, stock et photo", async ({ page }) => {
-    await page.goto("/boutique/nexpod");
-    await expect(page.getByTestId("product-sheet")).toHaveCount(3);
+  test("chaque tuile mène à sa propre page, sans mélange de produits", async ({ page }) => {
+    const cases: [string, string, string][] = [
+      ["Kit NexPOD", "/boutique/nexpod", "Kit NexPOD"],
+      ["Batteries", "/boutique/batteries", "Batterie NexPOD"],
+      ["Recharges", "/boutique/recharges", "Recharges NexPOD"],
+      ["NexBAR", "/boutique/nexbar", "NexBAR 10K"],
+    ];
+    for (const [tile, url, heading] of cases) {
+      await page.goto("/boutique");
+      await page.getByTestId("collection-tile").filter({ hasText: tile }).first().click();
+      await expect(page).toHaveURL(new RegExp(`${url}$`));
+      await expect(page.getByTestId("product-sheet")).toHaveCount(1);
+      await expect(page.getByTestId("product-sheet").getByRole("heading", { name: heading })).toBeVisible();
+    }
+    await page.goto("/boutique/kits");
+    await expect(page.getByText(/introuvable|404|n'existe pas/i).first()).toBeVisible();
+  });
+
+  test("batteries : les 4 couleurs, prix, stock et photo par couleur", async ({ page }) => {
+    await page.goto("/boutique/batteries");
     await imagesLoaded(page, "main article:first-of-type");
     await noOverflow(page);
-
-    const sheet = page.getByTestId("product-sheet").first();
-    await expect(sheet.getByRole("heading", { name: "Batterie NexPOD" })).toBeVisible();
+    const sheet = page.getByTestId("product-sheet");
+    await expect(sheet.getByTestId("variant-option")).toHaveCount(4);
     await expect(sheet.getByTestId("price")).toHaveText(/10\s000\sFCFA/);
-
     const img = sheet.locator("img").first();
     await sheet.getByRole("button", { name: "Voir Rouge" }).click();
     await expect(img).toHaveAttribute("src", /battery-rouge/);
     await sheet.getByRole("button", { name: "Voir Noir" }).click();
     await expect(img).toHaveAttribute("src", /battery-noir/);
-
     await sheet.getByRole("button", { name: /Voir Violet/ }).click();
     await expect(sheet.getByTestId("stock")).toHaveText("Épuisé");
-    await expect(sheet.getByRole("button", { name: "Augmenter Violet" })).toHaveCount(0); // épuisé : pas de sélecteur
-    await expect(sheet.getByTestId("add-to-cart")).toBeDisabled(); // rien de choisi
+    await expect(sheet.getByRole("button", { name: "Augmenter Violet" })).toHaveCount(0);
+    await expect(sheet.getByTestId("add-to-cart")).toBeDisabled();
     await expect(sheet.getByTestId("order-now")).toBeDisabled();
+  });
+
+  test("recharges : uniquement les saveurs de recharge", async ({ page }) => {
+    await page.goto("/boutique/recharges");
+    const sheet = page.getByTestId("product-sheet");
+    await expect(sheet).toHaveCount(1);
+    await expect(sheet.getByTestId("variant-option")).toHaveCount(2);
+    await expect(sheet.getByText("Mint").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Batterie NexPOD" })).toHaveCount(0);
   });
 
   test("NexBAR : une variante désactivée n'est pas proposée", async ({ page }) => {
@@ -101,7 +124,7 @@ test.describe("parcours visuel", () => {
   });
 
   test("panier : ajout, plafond de stock, persistance, quantité, retrait", async ({ page }) => {
-    await page.goto("/boutique/nexpod");
+    await page.goto("/boutique/batteries");
     const sheet = page.getByTestId("product-sheet").first();
     // Bleu est la 1re couleur vendable (stock 3)
     await expect(sheet.getByTestId("stock")).toHaveText("Plus que 3 en stock");
@@ -135,6 +158,7 @@ test.describe("parcours visuel", () => {
 
   test("« Commander » ajoute au panier puis ouvre le panier", async ({ page }) => {
     await page.goto("/boutique/nexbar");
+    await expect(page.getByTestId("product-sheet")).toHaveCount(1); // attend la fin de l'affichage progressif de la page
     await expect(page.getByTestId("order-now")).toBeDisabled(); // rien choisi
     await page.getByRole("button", { name: "Augmenter Peach Ice" }).click();
     await page.getByTestId("order-now").click();
