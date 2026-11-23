@@ -11,6 +11,11 @@ async function noOverflow(page: Page) {
   expect(over).toBeLessThanOrEqual(0);
 }
 
+/** Attend la fin de l'affichage progressif : plus de bloc de transition caché dans la page. */
+async function settled(page: Page) {
+  await page.waitForFunction(() => !document.querySelector('div[hidden][id^="S:"]'), undefined, { timeout: 15_000 });
+}
+
 async function imagesLoaded(page: Page, scope = "main") {
   await page.waitForFunction(
     (sel) => {
@@ -105,6 +110,34 @@ test.describe("parcours visuel", () => {
     await expect(sheet.getByTestId("order-now")).toBeDisabled();
   });
 
+  test("kit : on choisit une couleur et une saveur, plusieurs combinaisons possibles", async ({ page }) => {
+    await page.goto("/boutique/nexpod");
+    await settled(page);
+    const sheet = page.getByTestId("product-sheet");
+    await expect(sheet).toHaveCount(1);
+    await expect(sheet.getByTestId("composer")).toBeVisible();
+    await expect(sheet.getByTestId("color-option")).toHaveCount(2);
+    await expect(sheet.getByTestId("flavor-option")).toHaveCount(2);
+    await sheet.getByRole("radio", { name: "Noir" }).click();
+    await sheet.getByRole("radio", { name: /Double Apple/ }).click();
+    await expect(sheet.getByTestId("combo")).toContainText("Épuisé");
+    await expect(sheet.getByRole("button", { name: /Augmenter Noir · Double Apple/ })).toHaveCount(0);
+    await sheet.getByRole("radio", { name: /Peach Ice/ }).click();
+    const plusNoir = sheet.getByRole("button", { name: "Augmenter Noir · Peach Ice" });
+    await plusNoir.click();
+    await plusNoir.click();
+    await sheet.getByRole("radio", { name: "Bleu" }).click();
+    await sheet.getByRole("button", { name: "Augmenter Bleu · Peach Ice" }).click();
+    await expect(sheet.getByTestId("composer-lines")).toContainText("2 × Noir · Peach Ice");
+    await expect(sheet.getByTestId("composer-lines")).toContainText("1 × Bleu · Peach Ice");
+    await expect(sheet.getByTestId("selection-summary")).toContainText("3 articles");
+    await sheet.getByTestId("add-to-cart").click();
+    await expect(page.getByTestId("cart-count")).toHaveText("3");
+    await page.goto("/panier");
+    await expect(page.getByTestId("cart-line")).toHaveCount(2);
+    await expect(page.getByTestId("cart-line").first()).toContainText("Peach Ice");
+  });
+
   test("recharges : uniquement les saveurs de recharge", async ({ page }) => {
     await page.goto("/boutique/recharges");
     const sheet = page.getByTestId("product-sheet");
@@ -158,6 +191,7 @@ test.describe("parcours visuel", () => {
 
   test("« Commander » ajoute au panier puis ouvre le panier", async ({ page }) => {
     await page.goto("/boutique/nexbar");
+    await settled(page);
     await expect(page.getByTestId("product-sheet")).toHaveCount(1); // attend la fin de l'affichage progressif de la page
     await expect(page.getByTestId("order-now")).toBeDisabled(); // rien choisi
     await page.getByRole("button", { name: "Augmenter Peach Ice" }).click();
@@ -171,6 +205,7 @@ test.describe("parcours visuel", () => {
 
   test("choix multiple : plusieurs saveurs avec leurs quantités dans un seul ajout", async ({ page }) => {
     await page.goto("/boutique/nexbar");
+    await settled(page);
     const sheet = page.getByTestId("product-sheet");
     const rows = sheet.getByTestId("variant-option");
     await expect(rows).toHaveCount(3);
@@ -198,8 +233,8 @@ test.describe("parcours visuel", () => {
 
   test("recherche : trouve par saveur, gère l'absence de résultat", async ({ page }) => {
     await page.goto("/recherche?q=peach");
-    await expect(page.locator('[data-testid="search-summary"]:visible')).toContainText("1 résultat");
-    await expect(page.getByTestId("product-card")).toHaveCount(1);
+    await expect(page.locator('[data-testid="search-summary"]:visible')).toContainText("2 résultats"); // NexBAR et Kit NexPOD proposent Peach Ice
+    await expect(page.getByTestId("product-card")).toHaveCount(2);
     await page.goto("/recherche?q=zzzz");
     await expect(page.locator('[data-testid="search-summary"]:visible')).toContainText("0 résultat");
     await page.goto("/recherche");

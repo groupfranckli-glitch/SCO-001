@@ -44,7 +44,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/admin">["se
 
   const stock = (variants ?? []).map((v) => ({
     productName: (v.products as unknown as { name: string } | null)?.name ?? "",
-    label: v.color ?? v.flavor ?? "",
+    label: [v.color, v.flavor].filter(Boolean).join(" · "),
     available: Math.max(v.stock_on_hand - v.stock_reserved, 0),
   }));
   const now = new Date();

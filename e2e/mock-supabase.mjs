@@ -29,9 +29,13 @@ const products = [
     ],
   },
   {
-    id: "p3", slug: "nexpod-kit", name: "Kit NexPOD", kind: "nexpod_kit", puffs: 5000,
+    id: "00000000-0000-4000-8000-0000000000d3", slug: "nexpod-kit", name: "Kit NexPOD", kind: "nexpod_kit", puffs: 5000,
     description: "Batterie et recharge, prêts à l'emploi.", categories: cat.nexpod,
-    product_variants: [v("v7", "NP-K-NOIR", { color: "Noir", price_fcfa: 11000, stock_on_hand: 5 })],
+    product_variants: [
+      v("00000000-0000-4000-8000-00000000c001", "NP-K-NOIR-PI", { color: "Noir", flavor: "Peach Ice", price_fcfa: 11000, stock_on_hand: 5 }),
+      v("00000000-0000-4000-8000-00000000c002", "NP-K-NOIR-DA", { color: "Noir", flavor: "Double Apple", price_fcfa: 11000, stock_on_hand: 0 }),
+      v("00000000-0000-4000-8000-00000000c003", "NP-K-BLEU-PI", { color: "Bleu", flavor: "Peach Ice", price_fcfa: 11000, stock_on_hand: 4 }),
+    ],
   },
   {
     id: "p4", slug: "nexbar-10k", name: "NexBAR 10K", kind: "nexbar", puffs: 10000,

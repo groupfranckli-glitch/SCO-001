@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { DeleteVariant } from "@/components/admin/delete-variant";
 import { ActionForm } from "@/components/admin/action-form";
 import { AdminPage, Title, card } from "@/components/admin/page-shell";
-import { createProduct, createVariant, saveProduct, saveVariant } from "@/app/admin/modules-actions";
+import { createProduct, createVariant, deleteProduct, deleteVariant, saveProduct, saveVariant } from "@/app/admin/modules-actions";
 import { removeProductPhoto, uploadProductPhoto } from "@/app/admin/media-actions";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { publicUrl } from "@/lib/storage-url";
@@ -25,11 +26,16 @@ async function Content() {
 
   return (
     <>
-      <Title hint="Modifiez les produits, leurs variantes (couleurs, saveurs) et leurs prix. Un produit ou une variante désactivé disparaît de la boutique sans être supprimé.">Catalogue</Title>
+      <Title hint="Modifiez les produits, leurs variantes (couleurs, saveurs) et leurs prix. Vous pouvez tout modifier, désactiver (disponible ou non) ou supprimer. Un élément déjà commandé n'est jamais effacé : il est retiré de la boutique pour garder l'historique.">Catalogue</Title>
       <div className="mt-8 space-y-6" data-testid="catalogue">
         {(products ?? []).map((p) => {
           const variants = (p.product_variants as unknown as V[]) ?? [];
-          const flavorBased = p.kind === "nexbar";
+          const hasFlavor = p.kind === "nexbar" || p.kind === "nexpod_refill" || p.kind === "nexpod_kit";
+          const hasColor = p.kind === "nexpod_battery" || p.kind === "nexpod_kit";
+          const optionFields = (v?: V) => [
+            ...(hasColor ? [{ name: "color", label: "Couleur", value: v?.color }] : []),
+            ...(hasFlavor ? [{ name: "flavor", label: "Saveur", value: v?.flavor }] : []),
+          ];
           return (
             <section key={p.id} className={`${card} p-5`} data-testid="product-admin">
               <ActionForm
@@ -55,6 +61,9 @@ async function Content() {
                 />
                 <p className="mt-2 text-xs text-ink-soft">Utilisée quand une variante n&apos;a pas sa propre photo. Sans photo ici, l&apos;image fournie avec le site reste affichée.</p>
               </div>
+              <div className="mt-3">
+                <DeleteVariant action={deleteProduct} id={p.id} label={p.name} />
+              </div>
               <h3 className="mt-6 text-xs uppercase tracking-wider text-ink-soft">Variantes</h3>
               <ul className="mt-3 divide-y divide-line">
                 {variants.map((v) => (
@@ -65,11 +74,14 @@ async function Content() {
                       hidden={{ id: v.id }}
                       submit="OK"
                       fields={[
-                        flavorBased ? { name: "flavor", label: "Saveur", value: v.flavor } : { name: "color", label: "Couleur", value: v.color },
+                        ...optionFields(v),
                         { name: "price_fcfa", label: "Prix FCFA", type: "number", value: v.price_fcfa, required: true, min: 0 },
                         { name: "is_active", label: "Actif", type: "checkbox", value: v.is_active },
                       ]}
                     />
+                    <div className="mt-1">
+                      <DeleteVariant action={deleteVariant} id={v.id} label={[v.color, v.flavor].filter(Boolean).join(" · ") || v.sku} />
+                    </div>
                     <details className="mt-2">
                       <summary className="cursor-pointer text-xs text-ink-soft underline underline-offset-4">
                         {photo(p.id, v.id) ? "Photo de cette variante ✓" : "Photo de cette variante"}
@@ -89,7 +101,7 @@ async function Content() {
                 ))}
               </ul>
               <details className="mt-3">
-                <summary className="cursor-pointer text-sm underline underline-offset-4">Ajouter une variante</summary>
+                <summary className="cursor-pointer text-sm underline underline-offset-4">Ajouter une saveur / couleur</summary>
                 <div className="mt-3">
                   <ActionForm
                     action={createVariant}
@@ -98,7 +110,7 @@ async function Content() {
                     resetOnSuccess
                     fields={[
                       { name: "sku", label: "SKU", placeholder: "NEXPOD-BAT-VERT", required: true },
-                      flavorBased ? { name: "flavor", label: "Saveur" } : { name: "color", label: "Couleur" },
+                      ...optionFields(),
                       { name: "price_fcfa", label: "Prix FCFA", type: "number", required: true, min: 0 },
                     ]}
                   />

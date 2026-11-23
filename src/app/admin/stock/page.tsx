@@ -36,7 +36,7 @@ async function Content() {
           <tbody className="divide-y divide-line">
             {(variants ?? []).map((v) => {
               const name = (v.products as unknown as { name: string } | null)?.name ?? "";
-              const label = v.color ?? v.flavor ?? "";
+              const label = [v.color, v.flavor].filter(Boolean).join(" · ");
               const available = Math.max(v.stock_on_hand - v.stock_reserved, 0);
               return (
                 <tr key={v.id} data-testid="stock-row">

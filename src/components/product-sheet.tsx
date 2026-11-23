@@ -33,16 +33,24 @@ export function ProductSheet({
   const { add } = useCart();
   const firstAvailable = product.variants.find((v) => v.available > 0) ?? product.variants[0];
   const showOptions = product.variants.length > 1;
+  // Kit : une variante = une couleur + une saveur ; on les choisit séparément.
+  const composer = product.variants.length > 0 && product.variants.every((v) => v.color && v.flavor);
+  const colors = Array.from(new Set(product.variants.map((v) => v.color as string))).sort((a, b) => a.localeCompare(b, "fr"));
+  const flavors = Array.from(new Set(product.variants.map((v) => v.flavor as string))).sort((a, b) => a.localeCompare(b, "fr"));
+  const [color, setColor] = useState(firstAvailable?.color ?? "");
+  const [flavor, setFlavor] = useState(firstAvailable?.flavor ?? "");
+  const combo = composer ? product.variants.find((v) => v.color === color && v.flavor === flavor) : undefined;
   // Quantité choisie par variante : on peut composer plusieurs saveurs / couleurs en une seule fois.
   const [qtys, setQtys] = useState<Record<string, number>>(() => (!showOptions && firstAvailable && firstAvailable.available > 0 ? { [firstAvailable.id]: 1 } : {}));
   const [focusId, setFocusId] = useState(firstAvailable?.id ?? "");
+
   const [added, setAdded] = useState(false);
 
   const variant = product.variants.find((v) => v.id === focusId) ?? firstAvailable;
   const media = resolveMedia(product, variant);
   const stock = stockText(variant?.available ?? 0);
   const specs = SPECS[product.kind];
-  const optionLabel = product.kind === "nexpod_battery" || product.kind === "nexpod_kit" ? "Couleurs" : "Saveurs";
+  const optionLabel = composer ? "Couleur et saveur" : product.kind === "nexpod_battery" || product.kind === "nexpod_kit" ? "Couleurs" : "Saveurs";
   const reverse = index % 2 === 1;
 
   const maxFor = (v: { available: number }) => Math.min(v.available, MAX_LINE_QTY);
@@ -143,7 +151,79 @@ export function ProductSheet({
           </p>
         </div>
 
-        {showOptions && (
+        {composer && (
+          <div className="mt-7 space-y-6" data-testid="composer">
+            <fieldset>
+              <legend className="eyebrow mb-3">
+                Couleur · <span className="normal-case tracking-normal text-ink">{color}</span>
+              </legend>
+              <div role="radiogroup" aria-label="Couleur" className="flex flex-wrap gap-2">
+                {colors.map((c) => {
+                  const sw = SWATCH[norm(c)];
+                  const on = c === color;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      data-testid="color-option"
+                      onClick={() => {
+                        setColor(c);
+                        const v = product.variants.find((x) => x.color === c && x.flavor === flavor);
+                        if (v) setFocusId(v.id);
+                      }}
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition ${on ? "border-ink bg-ink text-background" : "border-line bg-surface hover:border-ink"}`}
+                    >
+                      {sw && <span aria-hidden="true" className="h-3.5 w-3.5 rounded-full border border-white/40" style={{ background: sw }} />}
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className="eyebrow mb-3">
+                Saveur · <span className="normal-case tracking-normal text-ink">{flavor}</span>
+              </legend>
+              <div role="radiogroup" aria-label="Saveur" className="flex flex-wrap gap-2">
+                {flavors.map((f) => {
+                  const v = product.variants.find((x) => x.color === color && x.flavor === f);
+                  const on = f === flavor;
+                  const out = !v || v.available <= 0;
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      data-testid="flavor-option"
+                      onClick={() => {
+                        setFlavor(f);
+                        if (v) setFocusId(v.id);
+                      }}
+                      className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm transition ${on ? "border-ink bg-ink text-background" : "border-line bg-surface hover:border-ink"} ${out ? "opacity-50" : ""}`}
+                    >
+                      {f}
+                      {out && <span className="sr-only"> (épuisé)</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3" data-testid="combo">
+              <p className="text-sm">
+                {combo ? combo.label : "Combinaison indisponible"}
+                <span className={`block text-xs ${combo && combo.available > 0 ? "text-ink-soft" : "text-danger"}`}>
+                  {combo ? (combo.available <= 0 ? "Épuisé" : combo.available <= 5 ? `Plus que ${combo.available} · ${formatFcfa(combo.priceFcfa)}` : formatFcfa(combo.priceFcfa)) : "Choisissez une autre saveur ou couleur"}
+                </span>
+              </p>
+              {combo && combo.available > 0 && stepper(combo)}
+            </div>
+          </div>
+        )}
+
+        {showOptions && !composer && (
           <fieldset className="mt-7">
             <legend className="eyebrow mb-3">
               {optionLabel} · <span className="normal-case tracking-normal text-ink">choisissez-en une ou plusieurs</span>
@@ -191,6 +271,20 @@ export function ProductSheet({
             Commander
           </button>
         </div>
+        {composer && chosen.length > 0 && (
+          <ul className="mt-4 space-y-1 text-sm" aria-label="Votre sélection" data-testid="composer-lines">
+            {chosen.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-3 rounded-xl bg-accent-soft/40 px-3 py-2">
+                <span>
+                  {qtyOf(v.id)} × {v.label}
+                </span>
+                <button type="button" className="text-xs underline underline-offset-4" aria-label={`Retirer ${v.label}`} onClick={() => setQty(v.id, 0)}>
+                  Retirer
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {showOptions && (
           <p className="mt-3 text-sm text-ink-soft" data-testid="selection-summary" aria-live="polite">
             {empty ? (soldOut ? "Produit épuisé." : "Aucune sélection pour le moment.") : `${totalQty} article${totalQty > 1 ? "s" : ""} · ${formatFcfa(totalPrice)}`}

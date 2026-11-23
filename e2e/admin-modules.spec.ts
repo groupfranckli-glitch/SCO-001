@@ -38,6 +38,29 @@ test("les pages de consultation s'affichent (stats, clients, livreurs, paiements
   await expect(page.getByTestId("product-admin").filter({ visible: true }).first()).toContainText("Variantes");
 });
 
+test("catalogue : couleur et saveur modifiables, suppression d'une variante avec confirmation", async ({ page, request }) => {
+  await asAdmin(page);
+  await page.goto("/admin/catalogue");
+  const kit = page.getByTestId("product-admin").filter({ visible: true }).filter({ hasText: "NP-K-NOIR-DA" });
+  const row = kit.getByTestId("variant-admin").filter({ hasText: "NP-K-NOIR-DA" });
+  await expect(row.getByLabel("Couleur")).toHaveValue("Noir");
+  await expect(row.getByLabel("Saveur")).toHaveValue("Double Apple");
+  const recharges = page.getByTestId("product-admin").filter({ visible: true }).filter({ hasText: "NP-R-MINT" });
+  await expect(recharges.getByLabel("Saveur").first()).toBeVisible();
+  await expect(recharges.getByLabel("Couleur")).toHaveCount(0);
+  page.once("dialog", (d) => d.dismiss());
+  await row.getByRole("button", { name: /Supprimer/ }).click();
+  expect((await calls(request)).filter((c) => c.fn === "write" && c.method === "DELETE")).toHaveLength(0);
+  page.once("dialog", (d) => d.accept());
+  await row.getByRole("button", { name: /Supprimer/ }).click();
+  await expect.poll(async () => (await calls(request)).filter((c) => c.fn === "write" && c.method === "DELETE" && c.table === "product_variants").length).toBe(1);
+
+  // suppression d'un produit entier (avec confirmation)
+  page.once("dialog", (d) => d.accept());
+  await kit.getByRole("button", { name: "Supprimer Kit NexPOD" }).click();
+  await expect.poll(async () => (await calls(request)).filter((c) => c.fn === "write" && c.method === "DELETE" && c.table === "products").length).toBe(1);
+});
+
 test("un client simple n'accède à aucune page des nouveaux modules", async ({ page }) => {
   await login(page, "test-token", "11111111-1111-4111-8111-111111111111", "awa@example.com");
   for (const p of ["/admin/catalogue", "/admin/promos", "/admin/reglages", "/admin/livraisons", "/admin/equipe", "/admin/journal", "/livreur"]) {

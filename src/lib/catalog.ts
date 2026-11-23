@@ -69,7 +69,7 @@ export function mapProduct(r: Row): Product {
       sku: v.sku,
       color: v.color,
       flavor: v.flavor,
-      label: v.color ?? v.flavor ?? r.name,
+      label: v.color && v.flavor ? `${v.color} · ${v.flavor}` : (v.color ?? v.flavor ?? r.name),
       priceFcfa: v.price_fcfa,
       available: availableQty(v.stock_on_hand, v.stock_reserved),
       photo: byVariant.get(v.id) ?? null,

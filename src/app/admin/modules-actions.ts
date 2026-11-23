@@ -23,6 +23,7 @@ const MESSAGES: Record<string, string> = {
   cannot_demote_self: "Vous ne pouvez pas retirer votre propre rôle administrateur.",
   "23505": "Cette valeur existe déjà (code, SKU, commune ou nom).",
   "23514": "Valeur refusée par les règles de la base.",
+  already_ordered: "Déjà commandé : retiré de la boutique (désactivé) pour garder l'historique des commandes.",
   "23503": "Élément lié à d'autres données : désactivez-le plutôt que de le supprimer.",
 };
 const explain = (e: { message: string; code?: string }) =>
@@ -107,6 +108,54 @@ export async function createVariant(input: unknown): Promise<AdminResult> {
     input, "variant.create", "variant", ["/boutique", "/produit"],
     (d: { productId: string; sku: string; color?: string; flavor?: string; price_fcfa: number }, _a, db) =>
       db.from("product_variants").insert({ product_id: d.productId, sku: d.sku, color: d.color ?? null, flavor: d.flavor ?? null, price_fcfa: d.price_fcfa }),
+  );
+}
+
+/** Supprime une variante jamais commandée ; si elle a déjà été commandée, on la désactive (l'historique des commandes reste exact). */
+export async function deleteVariant(input: unknown): Promise<AdminResult> {
+  return run(
+    z.object({ id: z.string().uuid() }),
+    input, "variant.delete", "variant", ["/boutique", "/produit"],
+    async (d: { id: string }, _a, db) => {
+      const { count, error } = await db.from("order_items").select("id", { count: "exact", head: true }).eq("variant_id", d.id);
+      if (error) return { error };
+      if ((count ?? 0) > 0) {
+        const off = await db.from("product_variants").update({ is_active: false }).eq("id", d.id);
+        if (off.error) return { error: off.error };
+        return { error: { message: "already_ordered", code: "ordered" } };
+      }
+      const mv = await db.from("stock_movements").delete().eq("variant_id", d.id);
+      if (mv.error) return { error: mv.error };
+      return db.from("product_variants").delete().eq("id", d.id);
+    },
+  );
+}
+
+/** Supprime un produit (et ses saveurs / couleurs, photos comprises) s'il n'a jamais été commandé ; sinon il est désactivé pour garder l'historique. */
+export async function deleteProduct(input: unknown): Promise<AdminResult> {
+  return run(
+    z.object({ id: z.string().uuid() }),
+    input, "product.delete", "product", ["/boutique", "/produit", "/"],
+    async (d: { id: string }, _a, db) => {
+      const { data: vs, error } = await db.from("product_variants").select("id").eq("product_id", d.id);
+      if (error) return { error };
+      const ids = (vs ?? []).map((v) => v.id as string);
+      if (ids.length) {
+        const { count, error: e2 } = await db.from("order_items").select("id", { count: "exact", head: true }).in("variant_id", ids);
+        if (e2) return { error: e2 };
+        if ((count ?? 0) > 0) {
+          const off = await db.from("products").update({ is_active: false }).eq("id", d.id);
+          if (off.error) return { error: off.error };
+          return { error: { message: "already_ordered", code: "ordered" } };
+        }
+        const mv = await db.from("stock_movements").delete().in("variant_id", ids);
+        if (mv.error) return { error: mv.error };
+        const dv = await db.from("product_variants").delete().in("id", ids);
+        if (dv.error) return { error: dv.error };
+      }
+      await db.from("product_images").delete().eq("product_id", d.id);
+      return db.from("products").delete().eq("id", d.id);
+    },
   );
 }
 
