@@ -161,12 +161,21 @@ http
     }
     const table = url.pathname.replace("/rest/v1/", "");
     if (["products", "product_variants", "promo_codes", "delivery_zones", "site_settings", "audit_log", "product_images", "banners"].includes(table) && ["POST", "PATCH", "PUT", "DELETE"].includes(req.method)) {
-      return body((b) => { calls.admin.push({ fn: "write", table, method: req.method, query: url.search, body: b }); res.writeHead(204); res.end(); });
+      return body((b) => {
+        calls.admin.push({ fn: "write", table, method: req.method, query: url.search, body: b });
+        if (req.method === "POST" && String(req.headers.prefer ?? "").includes("return=representation")) {
+          const row = { id: "00000000-0000-4000-8000-0000000000e1", ...(b && !Array.isArray(b) ? b : {}) };
+          return json(201, String(req.headers.accept ?? "").includes("pgrst.object") ? row : [row]);
+        }
+        res.writeHead(204); res.end();
+      });
     }
     if (table === "products") {
       let rows = products;
       const slug = eq(url, "slug");
       if (slug) rows = rows.filter((p) => p.slug === slug);
+      const pid = eq(url, "id");
+      if (pid) rows = rows.filter((p) => p.id === pid);
       return reply(rows);
     }
     if (table === "categories") return json(200, categories);

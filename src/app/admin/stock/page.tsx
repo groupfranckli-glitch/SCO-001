@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ActionForm } from "@/components/admin/action-form";
 import { StockAdjust } from "@/components/admin/stock-adjust";
 import { PageSkeleton } from "@/components/page-skeleton";
+import { addVariantWithStock, createProduct } from "@/app/admin/modules-actions";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Stock" };
@@ -10,9 +12,10 @@ const MOVE: Record<string, string> = { restock: "Réapprovisionnement", reserve:
 
 async function Content() {
   const supabase = await createClient();
-  const [{ data: variants }, { data: moves }] = await Promise.all([
+  const [{ data: variants }, { data: moves }, { data: products }] = await Promise.all([
     supabase.from("product_variants").select("id,sku,color,flavor,stock_on_hand,stock_reserved,is_active,products(name)").order("sku"),
     supabase.from("stock_movements").select("id,movement_type,quantity,note,created_at,product_variants(sku)").order("created_at", { ascending: false }).limit(15),
+    supabase.from("products").select("id,name,kind").order("name"),
   ]);
 
   return (
@@ -53,6 +56,42 @@ async function Content() {
             })}
           </tbody>
         </table>
+      </div>
+
+      <h2 className="display mt-12 text-3xl">Ajouter une saveur ou une couleur</h2>
+      <p className="mt-2 max-w-xl text-sm text-ink-soft">
+        Choisissez le produit, indiquez la saveur (NexBAR, recharges, kit) et/ou la couleur (batteries, kit), le prix et le stock de départ. Elle apparaît tout de suite dans la boutique.
+      </p>
+      <div className="mt-4 rounded-3xl border border-line bg-surface p-5" data-testid="add-variant">
+        <ActionForm
+          action={addVariantWithStock}
+          submit="Ajouter"
+          resetOnSuccess
+          fields={[
+            { name: "productId", label: "Produit", type: "select", options: (products ?? []).map((p) => ({ value: p.id, label: p.name })), wide: true },
+            { name: "flavor", label: "Saveur (ex. Mango Ice)" },
+            { name: "color", label: "Couleur (ex. Vert)" },
+            { name: "price_fcfa", label: "Prix FCFA", type: "number", required: true, min: 0 },
+            { name: "stock", label: "Stock de départ", type: "number", required: true, min: 0, value: 0 },
+          ]}
+        />
+      </div>
+
+      <h2 className="display mt-12 text-3xl">Ajouter un nouveau produit</h2>
+      <p className="mt-2 max-w-xl text-sm text-ink-soft">Créez d&apos;abord le produit, puis ajoutez ses saveurs ou couleurs avec le formulaire ci-dessus.</p>
+      <div className="mt-4 rounded-3xl border border-line bg-surface p-5" data-testid="add-product">
+        <ActionForm
+          action={createProduct}
+          submit="Créer le produit"
+          resetOnSuccess
+          fields={[
+            { name: "categorySlug", label: "Page de la boutique", type: "select", options: [{ value: "nexpod", label: "Kit NexPOD" }, { value: "batteries", label: "Batteries NexPOD" }, { value: "recharges", label: "Recharges NexPOD" }, { value: "nexbar", label: "NexBAR" }] },
+            { name: "kind", label: "Type", type: "select", options: [{ value: "nexpod_battery", label: "NexPOD batterie" }, { value: "nexpod_refill", label: "NexPOD recharge" }, { value: "nexpod_kit", label: "NexPOD kit" }, { value: "nexbar", label: "NexBAR" }] },
+            { name: "name", label: "Nom", required: true, wide: true },
+            { name: "description", label: "Description", wide: true },
+            { name: "puffs", label: "Bouffées", type: "number" },
+          ]}
+        />
       </div>
 
       <h2 className="display mt-12 text-3xl">Derniers mouvements</h2>

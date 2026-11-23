@@ -86,6 +86,25 @@ test.describe("administrateur", () => {
     await expect(page.getByText("Encaissé : 11 000").filter({ visible: true })).toBeVisible();
   });
 
+  test("stock : ajout d'une nouvelle saveur avec stock de départ (SKU généré, options exigées selon le produit)", async ({ page, request }) => {
+    await page.goto("/admin/stock");
+    const form = page.getByTestId("add-variant").filter({ visible: true });
+    await form.getByLabel("Produit").selectOption({ label: "Kit NexPOD" });
+    await form.getByLabel("Saveur (ex. Mango Ice)").fill("Mango Ice");
+    await form.getByLabel("Prix FCFA").fill("11000");
+    await form.getByRole("button", { name: "Ajouter" }).click();
+    await expect(page.locator("span[role=alert]:visible")).toContainText("les deux"); // le kit exige couleur ET saveur
+    expect((await (await request.get(`${MOCK}/__last`)).json()).admin.filter((c: { fn: string }) => c.fn === "write")).toHaveLength(0);
+
+    await form.getByLabel("Couleur (ex. Vert)").fill("Violet");
+    await form.getByLabel("Stock de départ").fill("12");
+    await form.getByRole("button", { name: "Ajouter" }).click();
+    await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.length).toBeGreaterThanOrEqual(2);
+    const admin = (await (await request.get(`${MOCK}/__last`)).json()).admin as Record<string, unknown>[];
+    expect(admin.find((c) => c.fn === "write" && c.table === "product_variants")).toMatchObject({ method: "POST", body: { sku: "NP-KIT-VIOLET-MANGOICE", color: "Violet", flavor: "Mango Ice", price_fcfa: 11000 } });
+    expect(admin.find((c) => c.fn === "stock")).toMatchObject({ p_delta: 12, p_note: "Stock initial", p_actor: ADMIN_ID });
+  });
+
   test("stock : tableau, réapprovisionnement, erreur lisible sur retrait excessif", async ({ page, request }) => {
     await page.goto("/admin/stock");
     await expect(page.getByTestId("stock-row").filter({ visible: true })).toHaveCount(2);
