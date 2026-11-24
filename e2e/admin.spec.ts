@@ -98,8 +98,9 @@ test.describe("administrateur", () => {
     await expect(rec.getByLabel(/couleur/i)).toHaveCount(0);
     await expect(sections.nth(1).getByLabel("Nouvelle couleur")).toBeVisible();
     const kit = sections.nth(0);
-    await expect(kit.locator("table th", { hasText: "Noir" })).toBeVisible();
-    await expect(kit.locator("table th", { hasText: "Bleu" })).toBeVisible();
+    await expect(kit.getByTestId("stock-input")).toHaveCount(2); // une saisie par saveur, pas par couleur
+    await expect(kit.getByLabel("Stock Peach Ice")).toHaveValue("5"); // plus haut stock des couleurs
+    await expect(kit.getByText(/n.ont pas le même stock/)).toBeVisible();
     await expect(sections.nth(3).getByText(/1 option désactivée/)).toBeVisible();
   });
 
@@ -113,12 +114,12 @@ test.describe("administrateur", () => {
     await expect(rec.getByRole("status")).toContainText("1 modification");
   });
 
-  test("stock : « Mettre tout à » remplit toutes les cases du kit", async ({ page }) => {
+  test("stock : « Mettre tout à » remplit toutes les saveurs du kit", async ({ page }) => {
     await page.goto("/admin/stock");
     const kit = page.getByTestId("stock-section").filter({ visible: true }).first();
     await kit.getByLabel("Quantité pour tout remplir").fill("15");
     await kit.getByRole("button", { name: "Remplir" }).click();
-    for (const i of [0, 1, 2]) await expect(kit.getByTestId("stock-input").nth(i)).toHaveValue("15");
+    for (const i of [0, 1]) await expect(kit.getByTestId("stock-input").nth(i)).toHaveValue("15");
   });
 
   test("stock : nouvelle saveur de recharge (sans couleur) puis nouvelle saveur de kit créée pour toutes les couleurs", async ({ page, request }) => {
@@ -132,6 +133,16 @@ test.describe("administrateur", () => {
     const admin = (await (await request.get(`${MOCK}/__last`)).json()).admin as Record<string, unknown>[];
     expect(admin.find((c) => c.fn === "write" && c.table === "product_variants")).toMatchObject({ method: "POST", body: { sku: "NP-REC-MANGOICE", color: null, flavor: "Mango Ice", price_fcfa: 6000 } });
     expect(admin.find((c) => c.fn === "stock")).toMatchObject({ p_delta: 12, p_note: "Stock initial", p_actor: ADMIN_ID });
+  });
+
+  test("stock du kit : une saisie par saveur est appliquée à toutes les couleurs", async ({ page, request }) => {
+    await page.goto("/admin/stock");
+    const kit = page.getByTestId("stock-section").filter({ visible: true }).first();
+    await kit.getByLabel("Stock Peach Ice").fill("9"); // Noir 5, Bleu 4 → 9 partout : +4 / +5
+    await kit.getByTestId("stock-save").click();
+    await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.filter((c: { fn: string }) => c.fn === "stock").length).toBe(2);
+    const deltas = ((await (await request.get(`${MOCK}/__last`)).json()).admin as { fn: string; p_delta: number }[]).filter((c) => c.fn === "stock").map((c) => c.p_delta).sort();
+    expect(deltas).toEqual([4, 5]);
   });
 
   test("stock : une nouvelle saveur de kit est créée pour toutes les couleurs", async ({ page, request }) => {

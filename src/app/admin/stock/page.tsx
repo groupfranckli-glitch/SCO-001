@@ -14,7 +14,7 @@ type Prod = { id: string; name: string; kind: string; position: number; variants
 
 const SECTION: Record<string, { help: string; add: { name: string; label: string; placeholder: string }[]; fill: string }> = {
   nexpod_kit: {
-    help: "Chaque ligne est une saveur, chaque colonne une couleur : la même saveur existe pour toutes les couleurs. Saisissez le nombre en stock dans chaque case (0 = épuisé).",
+    help: "Une ligne par saveur. La couleur n'est que celle du boîtier : les mêmes saveurs sont proposées dans toutes les couleurs.",
     add: [{ name: "flavor", label: "Nouvelle saveur (créée pour toutes les couleurs)", placeholder: "ex. Mango Ice" }, { name: "color", label: "Nouvelle couleur (créée pour toutes les saveurs)", placeholder: "ex. Vert" }],
     fill: "Saveur ou couleur",
   },
@@ -67,7 +67,7 @@ async function Content() {
             <p className="mt-2 max-w-2xl text-sm text-ink-soft">{cfg.help}</p>
 
             <div className="mt-5">
-              {rows.length ? <StockGrid key={rows.map((r) => `${r.id}:${r.onHand}`).join(",")} rows={rows} matrix={p.kind === "nexpod_kit"} /> : <p className="text-sm text-ink-soft">Aucune option pour le moment : ajoutez-en une ci-dessous.</p>}
+              {rows.length ? <StockGrid key={rows.map((r) => `${r.id}:${r.onHand}`).join(",")} rows={rows} byFlavor={p.kind === "nexpod_kit"} /> : <p className="text-sm text-ink-soft">Aucune option pour le moment : ajoutez-en une ci-dessous.</p>}
             </div>
 
             <div className="mt-6 border-t border-line pt-5" data-testid="add-variant">
