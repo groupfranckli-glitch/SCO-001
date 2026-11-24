@@ -86,38 +86,64 @@ test.describe("administrateur", () => {
     await expect(page.getByText("Encaissé : 11 000").filter({ visible: true })).toBeVisible();
   });
 
-  test("stock : ajout d'une nouvelle saveur avec stock de départ (SKU généré, options exigées selon le produit)", async ({ page, request }) => {
+  test("stock : une section par produit, dans l'ordre des pages ; recharges sans couleur ; kit en grille", async ({ page }) => {
     await page.goto("/admin/stock");
-    const form = page.getByTestId("add-variant").filter({ visible: true });
-    await form.getByLabel("Produit").selectOption({ label: "Kit NexPOD" });
-    await form.getByLabel("Saveur (ex. Mango Ice)").fill("Mango Ice");
-    await form.getByLabel("Prix FCFA").fill("11000");
-    await form.getByRole("button", { name: "Ajouter" }).click();
-    await expect(page.locator("span[role=alert]:visible")).toContainText("les deux"); // le kit exige couleur ET saveur
-    expect((await (await request.get(`${MOCK}/__last`)).json()).admin.filter((c: { fn: string }) => c.fn === "write")).toHaveLength(0);
+    const sections = page.getByTestId("stock-section").filter({ visible: true });
+    await expect(sections).toHaveCount(4);
+    await expect(sections.locator("h2")).toHaveText(["Kit NexPOD", "Batterie NexPOD", "Recharges NexPOD", "NexBAR 10K"]);
+    const rec = sections.nth(2);
+    await expect(rec.getByTestId("stock-input")).toHaveCount(2);
+    await expect(rec.getByText("Aucune couleur")).toHaveCount(0);
+    await expect(rec.getByLabel("Nouvelle saveur")).toBeVisible();
+    await expect(rec.getByLabel(/couleur/i)).toHaveCount(0);
+    await expect(sections.nth(1).getByLabel("Nouvelle couleur")).toBeVisible();
+    const kit = sections.nth(0);
+    await expect(kit.locator("table th", { hasText: "Noir" })).toBeVisible();
+    await expect(kit.locator("table th", { hasText: "Bleu" })).toBeVisible();
+    await expect(sections.nth(3).getByText(/1 option désactivée/)).toBeVisible();
+  });
 
-    await form.getByLabel("Couleur (ex. Vert)").fill("Violet");
-    await form.getByLabel("Stock de départ").fill("12");
-    await form.getByRole("button", { name: "Ajouter" }).click();
+  test("stock : modification groupée (écarts calculés), « Mettre tout à »", async ({ page, request }) => {
+    await page.goto("/admin/stock");
+    const rec = page.getByTestId("stock-section").filter({ visible: true }).nth(2);
+    await rec.getByLabel("Stock Mint").fill("20"); // 8 → 20 : +12
+    await rec.getByTestId("stock-save").click();
+    await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.length).toBe(1);
+    expect((await (await request.get(`${MOCK}/__last`)).json()).admin[0]).toMatchObject({ fn: "stock", p_delta: 12, p_note: "Mise à jour du stock", p_actor: ADMIN_ID });
+    await expect(rec.getByRole("status")).toContainText("1 modification");
+  });
+
+  test("stock : « Mettre tout à » remplit toutes les cases du kit", async ({ page }) => {
+    await page.goto("/admin/stock");
+    const kit = page.getByTestId("stock-section").filter({ visible: true }).first();
+    await kit.getByLabel("Quantité pour tout remplir").fill("15");
+    await kit.getByRole("button", { name: "Remplir" }).click();
+    for (const i of [0, 1, 2]) await expect(kit.getByTestId("stock-input").nth(i)).toHaveValue("15");
+  });
+
+  test("stock : nouvelle saveur de recharge (sans couleur) puis nouvelle saveur de kit créée pour toutes les couleurs", async ({ page, request }) => {
+    await page.goto("/admin/stock");
+    const rec = page.getByTestId("stock-section").filter({ visible: true }).nth(2);
+    await rec.getByLabel("Nouvelle saveur").fill("Mango Ice");
+    await rec.getByLabel("Prix FCFA").fill("6000");
+    await rec.getByLabel("Stock de départ").fill("12");
+    await rec.getByRole("button", { name: "Ajouter" }).click();
     await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.length).toBeGreaterThanOrEqual(2);
     const admin = (await (await request.get(`${MOCK}/__last`)).json()).admin as Record<string, unknown>[];
-    expect(admin.find((c) => c.fn === "write" && c.table === "product_variants")).toMatchObject({ method: "POST", body: { sku: "NP-KIT-VIOLET-MANGOICE", color: "Violet", flavor: "Mango Ice", price_fcfa: 11000 } });
+    expect(admin.find((c) => c.fn === "write" && c.table === "product_variants")).toMatchObject({ method: "POST", body: { sku: "NP-REC-MANGOICE", color: null, flavor: "Mango Ice", price_fcfa: 6000 } });
     expect(admin.find((c) => c.fn === "stock")).toMatchObject({ p_delta: 12, p_note: "Stock initial", p_actor: ADMIN_ID });
   });
 
-  test("stock : tableau, réapprovisionnement, erreur lisible sur retrait excessif", async ({ page, request }) => {
+  test("stock : une nouvelle saveur de kit est créée pour toutes les couleurs", async ({ page, request }) => {
     await page.goto("/admin/stock");
-    await expect(page.getByTestId("stock-row").filter({ visible: true })).toHaveCount(2);
-    const row = page.getByTestId("stock-row").filter({ visible: true }).first();
-    await row.getByPlaceholder("+10 / −2").fill("12");
-    await row.getByPlaceholder("Motif (facultatif)").fill("Arrivage");
-    await row.getByRole("button", { name: "Appliquer" }).click();
-    await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.length).toBe(1);
-    expect((await (await request.get(`${MOCK}/__last`)).json()).admin[0]).toMatchObject({ fn: "stock", p_delta: 12, p_note: "Arrivage", p_actor: ADMIN_ID });
-
-    await page.waitForLoadState("networkidle"); // laisse finir le rafraîchissement qui suit le 1er ajustement
-    await row.getByPlaceholder("+10 / −2").fill("-500");
-    await row.getByRole("button", { name: "Appliquer" }).click();
-    await expect(row.getByRole("alert")).toContainText("sous la quantité déjà réservée");
+    const kit = page.getByTestId("stock-section").filter({ visible: true }).first();
+    await kit.getByLabel("Nouvelle saveur (créée pour toutes les couleurs)").fill("Mango Ice");
+    await kit.getByLabel("Prix FCFA").first().fill("11000");
+    await kit.getByLabel("Stock par couleur").fill("5");
+    await kit.getByRole("button", { name: "Ajouter la saveur" }).click();
+    await expect.poll(async () => (await (await request.get(`${MOCK}/__last`)).json()).admin.filter((c: { fn: string }) => c.fn === "write" && true).length).toBeGreaterThanOrEqual(2);
+    const admin = (await (await request.get(`${MOCK}/__last`)).json()).admin as { fn: string; table?: string; method?: string; body?: Record<string, unknown> }[];
+    const created = admin.filter((c) => c.fn === "write" && c.table === "product_variants" && c.method === "POST").map((c) => `${c.body?.color}|${c.body?.flavor}`);
+    expect(created.sort()).toEqual(["Bleu|Mango Ice", "Noir|Mango Ice"]);
   });
 });

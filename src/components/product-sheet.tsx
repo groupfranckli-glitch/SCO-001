@@ -10,7 +10,7 @@ import { MAX_LINE_QTY } from "@/lib/cart";
 import { formatFcfa } from "@/lib/format";
 import { norm, resolveMedia, SPECS } from "@/lib/media";
 
-const SWATCH: Record<string, string> = { noir: "#15120f", bleu: "#3b6fd0", violet: "#8c78d6", rouge: "#c8312b" };
+const SWATCH: Record<string, string> = { noir: "#15120f", bleu: "#3b6fd0", violet: "#8c78d6", rouge: "#c8312b", gris: "#9a9a9a" };
 
 function stockText(n: number): { text: string; tone: string } {
   if (n <= 0) return { text: "Épuisé", tone: "text-danger" };
@@ -213,7 +213,7 @@ export function ProductSheet({
             </fieldset>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3" data-testid="combo">
               <p className="text-sm">
-                {combo ? combo.label : "Combinaison indisponible"}
+                {combo ? combo.flavor ?? combo.label : "Combinaison indisponible"}
                 <span className={`block text-xs ${combo && combo.available > 0 ? "text-ink-soft" : "text-danger"}`}>
                   {combo ? (combo.available <= 0 ? "Épuisé" : combo.available <= 5 ? `Plus que ${combo.available} · ${formatFcfa(combo.priceFcfa)}` : formatFcfa(combo.priceFcfa)) : "Choisissez une autre saveur ou couleur"}
                 </span>

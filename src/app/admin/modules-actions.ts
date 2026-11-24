@@ -24,7 +24,7 @@ const MESSAGES: Record<string, string> = {
   "23505": "Cette valeur existe déjà (code, SKU, commune ou nom).",
   "23514": "Valeur refusée par les règles de la base.",
   duplicate_variant: "Cette saveur / couleur existe déjà pour ce produit : modifiez-la dans Catalogue.",
-  option_required: "Indiquez la saveur ou la couleur adaptée à ce produit (kit : les deux).",
+  option_required: "Indiquez la saveur ou la couleur adaptée à ce produit.",
   already_ordered: "Déjà commandé : retiré de la boutique (désactivé) pour garder l'historique des commandes.",
   "23503": "Élément lié à d'autres données : désactivez-le plutôt que de le supprimer.",
 };
@@ -131,28 +131,48 @@ export async function addVariantWithStock(input: unknown): Promise<AdminResult> 
     async (d: { productId: string; color?: string; flavor?: string; price_fcfa: number; stock: number }, adminId, db) => {
       const { data: p } = await db.from("products").select("id,kind").eq("id", d.productId).maybeSingle();
       if (!p) return { error: { message: "Produit introuvable" } };
-      const needColor = p.kind === "nexpod_battery" || p.kind === "nexpod_kit";
-      const needFlavor = p.kind === "nexbar" || p.kind === "nexpod_refill" || p.kind === "nexpod_kit";
-      if ((needColor && !d.color) || (needFlavor && !d.flavor)) return { error: { message: "option_required" } };
-      const color = needColor ? d.color ?? null : null;
-      const flavor = needFlavor ? d.flavor ?? null : null;
+      const isKit = p.kind === "nexpod_kit";
+      const needColor = p.kind === "nexpod_battery" || isKit;
+      const needFlavor = p.kind === "nexbar" || p.kind === "nexpod_refill" || isKit;
       const { data: same } = await db.from("product_variants").select("id,color,flavor").eq("product_id", d.productId);
       const key = (c: string | null, f: string | null) => `${(c ?? "").toLowerCase()}|${(f ?? "").toLowerCase()}`;
-      if ((same ?? []).some((v) => key(v.color, v.flavor) === key(color, flavor))) return { error: { message: "duplicate_variant" } };
-      const base = [SKU_PREFIX[p.kind as string] ?? "PRD", color && code(color), flavor && code(flavor)].filter(Boolean).join("-").slice(0, 36);
-      let id: string | null = null;
-      for (const sku of [base, `${base}-2`, `${base}-3`, `${base}-${Math.floor(Math.random() * 900 + 100)}`]) {
-        const r = await db.from("product_variants").insert({ product_id: d.productId, sku, color, flavor, price_fcfa: d.price_fcfa }).select("id").single();
-        if (!r.error) {
-          id = r.data.id as string;
-          break;
-        }
-        if (r.error.code !== "23505") return { error: r.error };
+      const uniq = (xs: (string | null)[]) => {
+        const seen = new Map<string, string>();
+        for (const x of xs) if (x && !seen.has(x.toLowerCase())) seen.set(x.toLowerCase(), x);
+        return [...seen.values()];
+      };
+      let targets: [string | null, string | null][];
+      if (isKit && (d.color || d.flavor)) {
+        // Kit : une nouvelle saveur est créée pour TOUTES les couleurs (et une nouvelle couleur pour toutes les saveurs).
+        const colors = uniq([...(same ?? []).map((v) => v.color as string | null), d.color ?? null]);
+        const flavors = uniq([...(same ?? []).map((v) => v.flavor as string | null), d.flavor ?? null]);
+        if (d.color && d.flavor) targets = [[d.color, d.flavor]];
+        else if (d.flavor) targets = colors.map((c) => [c, d.flavor as string]);
+        else targets = flavors.map((f) => [d.color as string, f]);
+      } else {
+        if ((needColor && !d.color) || (needFlavor && !d.flavor)) return { error: { message: "option_required" } };
+        targets = [[needColor ? d.color ?? null : null, needFlavor ? d.flavor ?? null : null]];
       }
-      if (!id) return { error: { message: "23505", code: "23505" } };
-      if (d.stock > 0) {
-        const adj = await db.rpc("admin_adjust_stock", { p_variant: id, p_delta: d.stock, p_note: "Stock initial", p_actor: adminId });
-        if (adj.error) return { error: adj.error };
+      targets = targets.filter(([c, f]) => (!needColor || c) && (!needFlavor || f));
+      if (targets.length === 0) return { error: { message: "option_required" } };
+      const fresh = targets.filter(([c, f]) => !(same ?? []).some((v) => key(v.color, v.flavor) === key(c, f)));
+      if (fresh.length === 0) return { error: { message: "duplicate_variant" } };
+      for (const [color, flavor] of fresh) {
+        const base = [SKU_PREFIX[p.kind as string] ?? "PRD", color && code(color), flavor && code(flavor)].filter(Boolean).join("-").slice(0, 36);
+        let id: string | null = null;
+        for (const sku of [base, `${base}-2`, `${base}-3`, `${base}-${Math.floor(Math.random() * 900 + 100)}`]) {
+          const r = await db.from("product_variants").insert({ product_id: d.productId, sku, color, flavor, price_fcfa: d.price_fcfa }).select("id").single();
+          if (!r.error) {
+            id = r.data.id as string;
+            break;
+          }
+          if (r.error.code !== "23505") return { error: r.error };
+        }
+        if (!id) return { error: { message: "23505", code: "23505" } };
+        if (d.stock > 0) {
+          const adj = await db.rpc("admin_adjust_stock", { p_variant: id, p_delta: d.stock, p_note: "Stock initial", p_actor: adminId });
+          if (adj.error) return { error: adj.error };
+        }
       }
     },
   );

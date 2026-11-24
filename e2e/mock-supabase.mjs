@@ -3,10 +3,10 @@ import http from "node:http";
 
 const v = (id, sku, o) => ({ id, sku, is_active: true, color: null, flavor: null, stock_reserved: 0, ...o });
 const cat = {
-  nexpod: { slug: "nexpod", name: "Kit NexPOD" },
-  batteries: { slug: "batteries", name: "Batteries NexPOD" },
-  recharges: { slug: "recharges", name: "Recharges NexPOD" },
-  nexbar: { slug: "nexbar", name: "NexBAR" },
+  nexpod: { position: 1, slug: "nexpod", name: "Kit NexPOD" },
+  batteries: { position: 2, slug: "batteries", name: "Batteries NexPOD" },
+  recharges: { position: 3, slug: "recharges", name: "Recharges NexPOD" },
+  nexbar: { position: 4, slug: "nexbar", name: "NexBAR" },
 };
 
 const products = [
@@ -21,11 +21,11 @@ const products = [
     ],
   },
   {
-    id: "p2", slug: "nexpod-recharge", name: "Recharges NexPOD", kind: "nexpod_refill", puffs: 5000,
+    id: "00000000-0000-4000-8000-0000000000d2", slug: "nexpod-recharge", name: "Recharges NexPOD", kind: "nexpod_refill", puffs: 5000,
     description: "Recharge préremplie, prête à l'emploi.", categories: cat.recharges,
     product_variants: [
-      v("v5", "NP-R-MINT", { flavor: "Mint", price_fcfa: 6000, stock_on_hand: 8 }),
-      v("v6", "NP-R-3M", { flavor: "Three Melons", price_fcfa: 6000, stock_on_hand: 8 }),
+      v("00000000-0000-4000-8000-00000000c005", "NP-R-MINT", { flavor: "Mint", price_fcfa: 6000, stock_on_hand: 8 }),
+      v("00000000-0000-4000-8000-00000000c006", "NP-R-3M", { flavor: "Three Melons", price_fcfa: 6000, stock_on_hand: 8 }),
     ],
   },
   {
@@ -48,6 +48,15 @@ const products = [
     ],
   },
 ];
+if (process.env.MOCK_RICH) {
+  // Jeu de données proche de la vraie boutique, uniquement pour les captures d'écran.
+  const colors = ["Noir", "Bleu", "Violet", "Rouge"];
+  const flavors = ["Blueberry Raspberry", "Double Apple", "Energy Ice", "Grape Apple", "Peach Ice", "Strawberry Kiwi", "Watermelon Ice"];
+  const kit = products.find((p) => p.kind === "nexpod_kit");
+  kit.product_variants = colors.flatMap((c, i) => flavors.map((f, j) => v(`00000000-0000-4000-8000-0000000${i}${j}00`, `NP-K-${c}-${j}`, { color: c, flavor: f, price_fcfa: 11000, stock_on_hand: c === "Bleu" ? 20 : 0 })));
+  const rec = products.find((p) => p.kind === "nexpod_refill");
+  rec.product_variants = [...flavors, "Mint", "Three Melons"].map((f, j) => v(`00000000-0000-4000-8000-00000000r${j}`, `NP-R-${j}`, { flavor: f, price_fcfa: 6000, stock_on_hand: 20 + j * 5, stock_reserved: f === "Mint" ? 2 : 0 }));
+}
 const categories = [
   { slug: "nexpod", name: "Kit NexPOD", position: 1 },
   { slug: "batteries", name: "Batteries NexPOD", position: 2 },
@@ -215,7 +224,15 @@ http
       if (st) rows = rows.filter((o) => o.status === st);
       return reply(rows);
     }
-    if (table === "product_variants") return json(200, VARIANT_ROWS);
+    if (table === "product_variants") {
+      const idin = url.searchParams.get("id");
+      if (idin?.startsWith("in.")) {
+        const ids = idin.slice(4, -1).split(",");
+        return json(200, products.flatMap((p) => p.product_variants).filter((x) => ids.includes(x.id)));
+      }
+      const pid = eq(url, "product_id");
+      return json(200, pid ? (products.find((p) => p.id === pid)?.product_variants ?? []) : VARIANT_ROWS);
+    }
     if (table === "stock_movements") return json(200, []);
     if (table === "rpc/create_order" && req.method === "POST") {
       return body((b) => {
