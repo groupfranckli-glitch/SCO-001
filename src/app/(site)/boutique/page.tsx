@@ -44,18 +44,24 @@ export default function BoutiquePage() {
         <Tiles />
       </Suspense>
 
-      <ul className="mt-20 grid gap-6 border-y border-line py-8 text-center sm:grid-cols-3">
-        {[
-          ["Livraison", "à domicile à Abidjan"],
-          ["Produits d'origine", "NexPOD et NexBAR"],
-          ["18+", "vente réservée aux adultes"],
-        ].map(([a, b]) => (
-          <li key={a}>
-            <span className="display text-2xl">{a}</span>
-            <span className="ml-2 text-sm text-ink-soft">{b}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="marquee mt-20 border-y border-line py-8" role="list" aria-label="Nos engagements">
+        <div className="marquee-track">
+          {[0, 1, 2, 3].map((copy) => (
+            <div key={copy} className="marquee-group" aria-hidden={copy > 0 ? "true" : undefined}>
+              {[
+                ["Livraison", "à domicile à Abidjan"],
+                ["Produits d'origine", "NexPOD et NexBAR"],
+                ["18+", "vente réservée aux adultes"],
+              ].map(([a, b]) => (
+                <span key={a} role={copy === 0 ? "listitem" : undefined} className="marquee-item">
+                  <span className="display text-2xl">{a}</span>
+                  <span className="ml-2 text-sm text-ink-soft">{b}</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -135,3 +135,13 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Bandeau défilant continu (page Boutique) */
+.marquee { overflow: hidden; }
+.marquee-track { display: flex; width: max-content; animation: marquee-scroll 40s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee-group { display: flex; flex-shrink: 0; align-items: baseline; }
+.marquee-item { display: inline-flex; align-items: baseline; white-space: nowrap; padding: 0 2.5rem; }
+.marquee-item::after { content: "•"; margin-left: 5rem; color: var(--color-line, #ddd); }
+@keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } .marquee { overflow-x: auto; } }
